@@ -22,26 +22,28 @@ export const LLM_PROVIDERS: LLMProviderConfig[] = [
     label: 'OpenAI（开放AI）',
     baseUrl: 'https://api.openai.com/v1',
     models: [
-      { value: 'gpt-4o', label: 'OpenAI GPT-4o' },
-      { value: 'gpt-4o-mini', label: 'OpenAI GPT-4o-mini' },
-      { value: 'gpt-4.1', label: 'OpenAI GPT-4.1' }
+      { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
+      { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
+      { value: 'gpt-5.2', label: 'GPT-5.2' }
     ]
   },
   {
     value: 'bigmodel',
-    label: '智谱 BigModel',
+    label: '智谱 （BigModel）',
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
     models: [
-      { value: 'glm-4.5-flash', label: 'BigModel GLM-4.5-Flash' }
+      { value: 'glm-4.7-flash', label: 'GLM 4.7 Flash' },
+      { value: 'glm-4.7-flashx', label: 'GLM 4.7' },
     ]
   },
   {
     value: 'anthropic',
-    label: 'Anthropic（Claude）',
-    baseUrl: 'https://api.anthropic.com',
+    label: 'Claude（Anthropic）',
+    baseUrl: 'https://api.anthropic.com/v1/messages',
     models: [
-      { value: 'claude-3-5-sonnet', label: 'Anthropic Claude 3.5 Sonnet' },
-      { value: 'claude-3-opus', label: 'Anthropic Claude 3 Opus' }
+      { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+      { value: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
+      { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' }
     ]
   },
   {
@@ -49,8 +51,8 @@ export const LLM_PROVIDERS: LLMProviderConfig[] = [
     label: 'DeepSeek（深度求索）',
     baseUrl: 'https://api.deepseek.com',
     models: [
-      { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
-      { value: 'deepseek-chat', label: 'DeepSeek Chat' }
+      { value: 'deepseek-reasoner', label: 'DeepSeek v3.2(深度思考)' },
+      { value: 'deepseek-chat', label: 'DeepSeek v3.2' }
     ]
   }
 ]

@@ -6,6 +6,13 @@ dotenv.config();
 export interface Config {
   // 服务配置
   port: number;
+  ports: {
+    http: number;
+    control: number;
+    business: number;
+    audioUpload: number;
+    audioDownload: number;
+  };
   nodeEnv: string;
 
   // WebSocket配置
@@ -31,11 +38,18 @@ export interface Config {
 
   // 语音识别配置
   asr: {
-    provider: 'xunfei' | 'aliyun' | 'azure';
+    provider: 'xunfei' | 'aliyun' | 'azure' | 'openai';
     xunfei?: {
       appId: string;
       apiKey: string;
       apiSecret: string;
+    };
+    openai?: {
+      apiKey: string;
+      model: string;
+      baseUrl?: string;
+      language?: string;
+      prompt?: string;
     };
   };
 
@@ -72,11 +86,18 @@ export interface Config {
 }
 
 const config: Config = {
-  port: parseInt(process.env.PORT || '3002', 10),
+  port: parseInt(process.env.PORT || '9004', 10),
+  ports: {
+    http: parseInt(process.env.PORT || '9004', 10),
+    control: parseInt(process.env.CONTROL_PORT || '9000', 10),
+    business: parseInt(process.env.BUSINESS_PORT || '9001', 10),
+    audioUpload: parseInt(process.env.AUDIO_UPLOAD_PORT || '9002', 10),
+    audioDownload: parseInt(process.env.AUDIO_DOWNLOAD_PORT || '9003', 10),
+  },
   nodeEnv: process.env.NODE_ENV || 'development',
 
   ws: {
-    path: process.env.WS_PATH || '/api/conversation/connect',
+    path: process.env.WS_PATH || '/api/v1/conversation/connect',
     maxConnections: parseInt(process.env.WS_MAX_CONNECTIONS || '100', 10),
   },
 
@@ -102,6 +123,13 @@ const config: Config = {
       appId: process.env.XUNFEI_ASR_APP_ID || '',
       apiKey: process.env.XUNFEI_ASR_API_KEY || '',
       apiSecret: process.env.XUNFEI_ASR_API_SECRET || '',
+    },
+    openai: {
+      apiKey: process.env.OPENAI_ASR_API_KEY || '',
+      model: process.env.OPENAI_ASR_MODEL || 'whisper-1',
+      baseUrl: process.env.OPENAI_ASR_BASE_URL || 'https://api.openai.com/v1',
+      language: process.env.OPENAI_ASR_LANGUAGE || 'zh',
+      prompt: process.env.OPENAI_ASR_PROMPT || '',
     },
   },
 
