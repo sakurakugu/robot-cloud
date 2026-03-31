@@ -1,5 +1,5 @@
 {
-  "name": "robot-dog-interaction",
+  "name": "robot-system-interaction",
   "version": "1.0.0",
   "description": "机器狗交互管理系统后端服务",
   "main": "dist/server.js",
@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
-    "robot-dog",
+    "robot-system",
     "interaction",
     "websocket",
     "ai"

@@ -1,11 +1,11 @@
-# robot-cloud - 云端服务
+# cloud-server - 云端服务
 
 云端管理平台，提供 Web 界面和后端 API，支持机器人管理、大模型交互、编舞系统等功能。
 
 ## 目录结构
 
 ```
-robot-cloud/
+cloud-server/
 ├── 前端/                        # Vue3 前端应用
 │   ├── src/
 │   │   ├── api/                 # API 请求
@@ -77,14 +77,14 @@ robot-cloud/
 
 ### 功能模块
 
-| 模块 | 功能 |
-|------|------|
+| 模块       | 功能                                 |
+| ---------- | ------------------------------------ |
 | 机器人管理 | 机器人注册、状态管理、WebSocket 连接 |
 | 大模型交互 | LLM 对话、ASR 语音识别、TTS 语音合成 |
-| 编舞系统 | 动作编排、时间线编辑、动作执行 |
-| 角色管理 | 角色创建、系统提示词配置 |
-| 设置 | AI 配置、系统参数 |
-| WebSocket | 实时通信、消息路由 |
+| 编舞系统   | 动作编排、时间线编辑、动作执行       |
+| 角色管理   | 角色创建、系统提示词配置             |
+| 设置       | AI 配置、系统参数                    |
+| WebSocket  | 实时通信、消息路由                   |
 
 ### 安装运行
 
@@ -114,60 +114,60 @@ npm run migration:create -- add_some_table
 
 #### 机器人管理 `/api/v1/robots`
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/` | 获取机器人列表 |
-| GET | `/:uuid` | 获取机器人详情 |
-| POST | `/` | 创建机器人 |
-| PUT | `/:uuid` | 更新机器人 |
-| DELETE | `/:uuid` | 删除机器人 |
-| GET | `/discover` | 发现局域网机器人 (mDNS) |
-| POST | `/:uuid/connect` | 连接机器人 |
-| POST | `/:uuid/disconnect` | 断开连接 |
+| 方法   | 路径                | 描述                    |
+| ------ | ------------------- | ----------------------- |
+| GET    | `/`                 | 获取机器人列表          |
+| GET    | `/:uuid`            | 获取机器人详情          |
+| POST   | `/`                 | 创建机器人              |
+| PUT    | `/:uuid`            | 更新机器人              |
+| DELETE | `/:uuid`            | 删除机器人              |
+| GET    | `/discover`         | 发现局域网机器人 (mDNS) |
+| POST   | `/:uuid/connect`    | 连接机器人              |
+| POST   | `/:uuid/disconnect` | 断开连接                |
 
 #### 对话 `/api/v1/conversations`
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| POST | `/:robotId/message` | 发送消息 |
-| GET | `/:robotId/history` | 获取对话历史 |
+| 方法   | 路径                | 描述         |
+| ------ | ------------------- | ------------ |
+| POST   | `/:robotId/message` | 发送消息     |
+| GET    | `/:robotId/history` | 获取对话历史 |
 | DELETE | `/:robotId/history` | 清除对话历史 |
 
 #### 大模型配置 `/api/v1/config`
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/llm` | 获取 LLM 配置 |
-| POST | `/llm` | 更新 LLM 配置 |
-| GET | `/llm/providers` | 获取支持的供应商 |
+| 方法 | 路径             | 描述             |
+| ---- | ---------------- | ---------------- |
+| GET  | `/llm`           | 获取 LLM 配置    |
+| POST | `/llm`           | 更新 LLM 配置    |
+| GET  | `/llm/providers` | 获取支持的供应商 |
 
 #### 角色 `/api/v1/roles`
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/` | 获取角色列表 |
-| POST | `/` | 创建角色 |
-| PUT | `/:id` | 更新角色 |
-| DELETE | `/:id` | 删除角色 |
+| 方法   | 路径   | 描述         |
+| ------ | ------ | ------------ |
+| GET    | `/`    | 获取角色列表 |
+| POST   | `/`    | 创建角色     |
+| PUT    | `/:id` | 更新角色     |
+| DELETE | `/:id` | 删除角色     |
 
 #### 编舞 `/api/v1/choreo`
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/projects` | 获取项目列表 |
-| POST | `/projects` | 创建项目 |
-| GET | `/projects/:id` | 获取项目详情 |
-| PUT | `/projects/:id` | 更新项目 |
-| DELETE | `/projects/:id` | 删除项目 |
-| POST | `/projects/:id/execute` | 执行编舞 |
+| 方法   | 路径                    | 描述         |
+| ------ | ----------------------- | ------------ |
+| GET    | `/projects`             | 获取项目列表 |
+| POST   | `/projects`             | 创建项目     |
+| GET    | `/projects/:id`         | 获取项目详情 |
+| PUT    | `/projects/:id`         | 更新项目     |
+| DELETE | `/projects/:id`         | 删除项目     |
+| POST   | `/projects/:id/execute` | 执行编舞     |
 
 ### WebSocket 端点
 
-| 端点 | 用途 |
-|------|------|
-| `/api/v1/robot/connect` | 主连接 |
-| `/api/v1/robot/business` | 业务通道 |
-| `/api/v1/robot/audio/upload` | 音频上传 |
+| 端点                           | 用途     |
+| ------------------------------ | -------- |
+| `/api/v1/robot/connect`        | 主连接   |
+| `/api/v1/robot/business`       | 业务通道 |
+| `/api/v1/robot/audio/upload`   | 音频上传 |
 | `/api/v1/robot/audio/download` | 音频下载 |
 
 ### 大模型交互流程
@@ -230,14 +230,14 @@ npm run migration:create -- add_some_table
 
 ### 功能模块
 
-| 模块 | 路径 | 功能 |
-|------|------|------|
-| 机器人管理 | `/robots` | 机器人列表、添加、编辑、删除 |
-| 机器人操作 | `/robots/:id/operation` | 实时控制、对话、视频流 |
-| 编舞系统 | `/choreo` | 动作编排、时间线编辑 |
-| 角色管理 | `/roles` | 角色配置、系统提示词 |
-| 设置 | `/settings` | AI 配置、系统参数 |
-| 对话 | `/conversation` | 与机器人对话 |
+| 模块       | 路径                    | 功能                         |
+| ---------- | ----------------------- | ---------------------------- |
+| 机器人管理 | `/robots`               | 机器人列表、添加、编辑、删除 |
+| 机器人操作 | `/robots/:id/operation` | 实时控制、对话、视频流       |
+| 编舞系统   | `/choreo`               | 动作编排、时间线编辑         |
+| 角色管理   | `/roles`                | 角色配置、系统提示词         |
+| 设置       | `/settings`             | AI 配置、系统参数            |
+| 对话       | `/conversation`         | 与机器人对话                 |
 
 ### 安装运行
 
@@ -294,13 +294,13 @@ npm run dev
 
 #### 组件
 
-| 组件 | 功能 |
-|------|------|
-| TimelineEditor | 时间线编辑器主组件 |
-| ActionTrack | 动作轨道 |
-| AudioTrack | 音频轨道 |
-| ActionSelectorDialog | 动作选择对话框 |
-| RobotPreview | 机器人预览 |
+| 组件                 | 功能               |
+| -------------------- | ------------------ |
+| TimelineEditor       | 时间线编辑器主组件 |
+| ActionTrack          | 动作轨道           |
+| AudioTrack           | 音频轨道           |
+| ActionSelectorDialog | 动作选择对话框     |
+| RobotPreview         | 机器人预览         |
 
 ### 机器人操作页面
 
@@ -367,9 +367,9 @@ npm run build
 云端服务现已支持 Docker Compose 一键部署，适合直接部署到腾讯云 Linux 服务器。
 
 ```bash
-cd /path/to/robot-dog
+cd /path/to/robot-system
 
-# 首次运行会自动从 app/robot-cloud/.env.example 复制出 .env
+# 首次运行会自动从 app/cloud-server/.env.example 复制出 .env
 ./start-cloud.sh start
 
 # 查看状态
@@ -399,7 +399,7 @@ cd /path/to/robot-dog
 
 云端环境变量位于：
 
-- `app/robot-cloud/.env`
+- `app/cloud-server/.env`
 
 常用配置项：
 

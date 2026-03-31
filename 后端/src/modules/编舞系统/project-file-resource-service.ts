@@ -109,7 +109,7 @@ export class 编舞项目文件资源服务 {
   }
 
   async importProject(filePath: string, _originalName: string): Promise<ChoreoProject> {
-    const tempExtractDir = path.join(os.tmpdir(), 'robot-dog-extracts', `extract_${Date.now()}`);
+    const tempExtractDir = path.join(os.tmpdir(), 'robot-system-extracts', `extract_${Date.now()}`);
 
     try {
       await extractZip(filePath, { dir: tempExtractDir });

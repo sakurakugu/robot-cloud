@@ -112,7 +112,7 @@ class Logger {
     this.日志 = winston.createLogger({
       level: 配置.logging.level,
       format: this.文件格式,
-      defaultMeta: { service: 'robot-cloud' },
+      defaultMeta: { service: 'cloud-server' },
       transports: [
         new winston.transports.Console({
           format: this.控制台格式,

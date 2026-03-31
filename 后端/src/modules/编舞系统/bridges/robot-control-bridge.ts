@@ -17,7 +17,7 @@ type 编舞Python执行器 = Pick<PythonExecutor, 'testSshConnection' | 'autoCon
 export class 编舞机器人控制桥接 {
   constructor(
     private readonly pythonExecutor: 编舞Python执行器 = new PythonExecutor(
-      path.join(__dirname, '../../../../../../dance-choreo/robot-control'),
+      path.join(__dirname, '../../../../../../dance-choreo/robot-control'), // TODO: 旧的删除了，这个路径是对的吗？
     ),
     private readonly 启动进程: typeof spawn = spawn,
   ) {}

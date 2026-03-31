@@ -1,23 +1,23 @@
 import 配置 from '../../config';
 import { logger } from '../../core/logger';
 import {
-  hasVisionTag,
-  parseNormalizedTargetPosition,
-  RateLimiter,
-  removeActionTags,
-  removeTargetTags,
-  removeVisionTags,
-  uuidv7,
+    hasVisionTag,
+    parseNormalizedTargetPosition,
+    RateLimiter,
+    removeActionTags,
+    removeTargetTags,
+    removeVisionTags,
+    uuidv7,
 } from '../../core/utils/helpers';
-import { LLM供应商列表 } from '../../modules/大模型管理/types';
 import type { ServerMessage, TTSOptions } from '../../types';
 import type { 对话服务 } from '../大模型交互/chat-service';
 import type { ConversationRepository } from '../大模型交互/repository';
 import type TTSService from '../大模型交互/tts-service';
+import { LLM供应商列表 } from '../大模型管理/types';
 import type { Action } from '../机器人交互/types';
-import type { RoleRecord } from '../角色管理/types';
-import type { RobotRecord, 音频路由配置 } from '../机器人管理/types';
 import type { 机器人服务 } from '../机器人管理/service';
+import type { RobotRecord, 音频路由配置 } from '../机器人管理/types';
+import type { RoleRecord } from '../角色管理/types';
 
 type Channel = 'control' | 'business' | 'audio_upload' | 'audio_download';
 

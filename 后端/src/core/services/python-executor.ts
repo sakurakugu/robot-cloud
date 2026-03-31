@@ -46,7 +46,7 @@ export class Python执行器 extends EventEmitter {
     // 默认使用 dance-choreo 的 robot-control 目录
     this.robotControlPath = robotControlPath || path.join(
       __dirname,
-      '../../../../../dance-choreo/robot-control'
+      '../../../../../dance-choreo/robot-control' // TODO: 旧的删除了，这个路径是对的吗？
     );
   }
 

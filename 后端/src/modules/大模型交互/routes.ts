@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { 对话控制器 } from '../大模型交互/controller';
+import type { 对话控制器 } from './controller';
 
 export function createConversationRoutes(controller: 对话控制器): Router {
   const router = Router();
