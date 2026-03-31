@@ -1,4 +1,4 @@
-# cloud-server - 云端服务
+# robot-cloud - 云端服务
 
 云端管理平台，提供 Web 界面和后端 API，支持机器人管理、大模型交互、编舞系统等功能。
 
@@ -367,9 +367,9 @@ npm run build
 云端服务现已支持 Docker Compose 一键部署，适合直接部署到腾讯云 Linux 服务器。
 
 ```bash
-cd /path/to/robot-system
+cd /path/to/robot-cloud
 
-# 首次运行会自动从 app/cloud-server/.env.example 复制出 .env
+# 首次运行会自动从仓库根目录 .env.example 复制出 .env
 ./start-cloud.sh start
 
 # 查看状态
@@ -399,7 +399,7 @@ cd /path/to/robot-system
 
 云端环境变量位于：
 
-- `app/cloud-server/.env`
+- `./.env`
 
 常用配置项：
 

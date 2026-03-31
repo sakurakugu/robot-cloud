@@ -24,9 +24,9 @@ from .utils import (
 )
 
 
-CLOUD_SERVER_DIR = ROOT / "app" / "cloud-server"
-CLOUD_SERVER_BACKEND = ROOT / "app" / "cloud-server" / "后端"
-CLOUD_SERVER_FRONTEND = ROOT / "app" / "cloud-server" / "前端"
+CLOUD_SERVER_DIR = ROOT
+CLOUD_SERVER_BACKEND = ROOT / "后端"
+CLOUD_SERVER_FRONTEND = ROOT / "前端"
 
 
 def _which(cmd: str) -> str | None:
