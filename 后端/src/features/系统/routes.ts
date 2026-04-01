@@ -2,11 +2,11 @@ import type { Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
 import os from 'os';
 import { 发送Http错误 } from '../../shared/http/controller';
-import { formatTimestamp } from '../../shared/utils/datetime';
+import type { 系统健康快照, 系统状态详情 } from './types';
 
 export interface 系统路由依赖 {
-  获取在线机器人数量(): number;
-  获取机器人总数(): Promise<number>;
+  获取系统状态(): Promise<系统状态详情>;
+  获取健康状态(): Promise<系统健康快照>;
 }
 
 export function createSystemRoutes(
@@ -20,16 +20,9 @@ export function createSystemRoutes(
    */
   const 状态处理器 = async (_req: Request, res: Response) => {
     try {
-      const onlineRobots = 依赖.获取在线机器人数量();
-      const totalRobots = await 依赖.获取机器人总数();
-
       res.json({
         success: true,
-        data: {
-          onlineRobots,
-          totalRobots,
-          timestamp: formatTimestamp(),
-        },
+        data: await 依赖.获取系统状态(),
       });
     } catch (error: any) {
       发送Http错误(res, error);
@@ -44,14 +37,19 @@ export function createSystemRoutes(
   /**
    * 健康检查
    */
-  router.get('/health', (_req: Request, res: Response) => {
-    res.json({
-      success: true,
-      data: {
-        status: 'healthy',
-        timestamp: formatTimestamp(),
-      },
-    });
+  router.get('/health', async (_req: Request, res: Response) => {
+    try {
+      const health = await 依赖.获取健康状态();
+      res.json({
+        success: true,
+        data: {
+          ...health,
+          timestamp: health.checkedAt,
+        },
+      });
+    } catch (error: any) {
+      发送Http错误(res, error);
+    }
   });
 
   /**

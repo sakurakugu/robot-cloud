@@ -80,15 +80,75 @@ export interface UpdateUIConfigDTO {
   controlLayout?: Record<string, { x: number; y: number }>
 }
 
+export type SystemHealthStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown'
+
+export interface SystemHealthComponentStatus {
+  key: string
+  label: string
+  status: SystemHealthStatus
+  detail: string | null
+}
+
+export interface SystemHealthSnapshot {
+  status: SystemHealthStatus
+  checkedAt: string
+  components: SystemHealthComponentStatus[]
+}
+
+export interface SystemRequestEvent {
+  method: string
+  path: string
+  statusCode: number
+  durationMs: number
+  happenedAt: string
+  detail: string | null
+}
+
+export interface SystemRequestAggregate {
+  method: string
+  path: string
+  count: number
+  lastStatusCode: number
+  lastHappenedAt: string
+  maxDurationMs: number
+  avgDurationMs: number
+  detail: string | null
+}
+
+export interface SystemRuntimeSnapshot {
+  recentWindowMinutes: number
+  slowRequestThresholdMs: number
+  errorCount: number
+  slowRequestCount: number
+  topErrorRoutes: SystemRequestAggregate[]
+  topSlowRoutes: SystemRequestAggregate[]
+  recentErrors: SystemRequestEvent[]
+  recentSlowRequests: SystemRequestEvent[]
+}
+
 export interface SystemStatus {
   onlineRobots: number
   totalRobots: number
   timestamp: string
+  cpuPercent: number
+  memoryTotalGb: number
+  memoryUsedGb: number
+  memoryPercent: number
+  diskTotalGb: number
+  diskUsedGb: number
+  diskPercent: number
+  uptimeSeconds: number
+  health: SystemHealthSnapshot
+  runtime: SystemRuntimeSnapshot
 }
 
 export interface NetworkInfo {
   ip: string
   all: string[]
+}
+
+export interface HealthCheckResult extends SystemHealthSnapshot {
+  timestamp: string
 }
 
 export type ReleaseChannel = 'stable' | 'beta'

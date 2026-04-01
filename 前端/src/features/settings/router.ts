@@ -4,6 +4,16 @@ import type { RouteRecordRaw } from 'vue-router'
 
 export const systemRoutes: RouteRecordRaw[] = [
   {
+    path: '/system-status',
+    name: 'SystemStatus',
+    component: () => import('@/features/settings/views/SystemStatus.vue'),
+    meta: {
+      title: '系统状态',
+      icon: 'Monitor',
+      roles: ['admin', 'super_admin'],
+    },
+  },
+  {
     path: '/update-manage',
     name: 'UpdateManage',
     component: () => import('@/features/settings/views/UpdateManage.vue'),

@@ -213,6 +213,7 @@ const menuGroups = computed<MenuGroup[]>(() => {
       key: 'admin',
       title: '管理员',
       items: [
+        { key: '/system-status', label: '系统状态', icon: Monitor },
         { key: '/params', label: '参数管理', icon: Setting },
         { key: '/update-manage', label: '更新管理', icon: UploadFilled },
         { key: '/kb', label: '知识库', icon: Collection },

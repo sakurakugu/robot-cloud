@@ -9,7 +9,9 @@ import { createLLMRoutes } from '../features/大模型管理/routes';
 import { createUpdateRoutes } from '../features/更新管理/routes';
 import { createRobotPackageRoutes } from '../features/机器人包管理/routes';
 import { createRobotRoutes } from '../features/机器人管理/routes';
+import { 创建系统监控中间件 } from '../features/系统/monitor';
 import { createSystemRoutes } from '../features/系统/routes';
+import { 获取系统健康快照, 获取系统状态详情 } from '../features/系统/status-service';
 import { createChoreoRoutes } from '../features/编舞系统/routes';
 import { createRoleRoutes } from '../features/角色管理/routes';
 import { createSettingsRoutes } from '../features/设置/routes';
@@ -47,6 +49,7 @@ export async function createApp(context: 应用上下文): Promise<express.Appli
   app.use(cors());
   app.use(express.json());
   app.use(withAuthContext(context.服务.账号服务));
+  app.use(创建系统监控中间件());
 
   app.use((请求, _响应, 下一步) => {
     logger.info(`${请求.method} ${请求.path}`, {
@@ -68,8 +71,16 @@ export async function createApp(context: 应用上下文): Promise<express.Appli
     manage: requireRole('admin', 'super_admin'),
   }));
   路由器.use('/', createSystemRoutes({
-    获取在线机器人数量: () => context.WebSocket服务.getOnlineCount(),
-    获取机器人总数: () => context.依赖.机器人仓库.countRobots(),
+    获取系统状态: () => 获取系统状态详情({
+      数据库: context.异步数据库,
+      获取在线机器人数量: () => context.WebSocket服务.getOnlineCount(),
+      获取机器人总数: () => context.依赖.机器人仓库.countRobots(),
+    }),
+    获取健康状态: () => 获取系统健康快照({
+      数据库: context.异步数据库,
+      获取在线机器人数量: () => context.WebSocket服务.getOnlineCount(),
+      获取机器人总数: () => context.依赖.机器人仓库.countRobots(),
+    }),
   }, {
     protectedRead: requireAuth,
   }));

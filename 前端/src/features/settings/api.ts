@@ -9,6 +9,7 @@ import type {
     FeedbackListQuery,
     FeedbackListResult,
     FeedbackStatus,
+    HealthCheckResult,
     LLMConfig,
     LLMProvider,
     NetworkInfo,
@@ -100,7 +101,7 @@ export function getSystemStatus() {
  * 健康检查
  */
 export function healthCheck() {
-  return http.get<ApiResponse>('/api/v1/health')
+  return http.get<ApiResponse<HealthCheckResult>>('/api/v1/health')
 }
 
 /**
