@@ -64,6 +64,7 @@ export interface UpdateRobotDto {
   model?: string;
   sn?: string;
   tags?: string[];
+  role_id?: string | null;
   role_uuid?: string | null;
 }
 

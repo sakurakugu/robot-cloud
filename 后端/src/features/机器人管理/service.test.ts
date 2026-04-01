@@ -245,6 +245,23 @@ describe('机器人服务', () => {
     await expect(service.更新机器人('robot-404', { name: '新名字' })).rejects.toThrow('机器人不存在');
   });
 
+  it('更新机器人 应兼容 role_id 并持久化到 role_uuid', async () => {
+    const repository = 创建机器人仓库Mock();
+    repository.getRobot
+      .mockResolvedValueOnce(创建机器人记录({ role_uuid: null }))
+      .mockResolvedValueOnce(创建机器人记录({ role_uuid: 'role-2' }));
+
+    const service = new 机器人服务(repository);
+    await service.更新机器人('robot-1', { role_id: 'role-2' });
+
+    expect(repository.updateRobot).toHaveBeenCalledWith(
+      'robot-1',
+      expect.objectContaining({
+        role_uuid: 'role-2',
+      }),
+    );
+  });
+
   it('获取音量 应通过机器人命令服务查询机器人状态', async () => {
     const repository = 创建机器人仓库Mock();
     const 机器人命令服务 = 创建机器人命令服务Mock();

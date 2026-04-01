@@ -181,6 +181,8 @@ export class 机器人服务 {
       throw new Error('机器人不存在');
     }
 
+    const 角色UUID = data.role_uuid !== undefined ? data.role_uuid : data.role_id;
+
     await this.repository.updateRobot(uuid, {
       name: data.name,
       model: data.model,
@@ -188,7 +190,7 @@ export class 机器人服务 {
       group_name: data.group_name,
       sn: data.sn,
       tags: data.tags ? JSON.stringify(data.tags) : undefined,
-      role_uuid: data.role_uuid,
+      role_uuid: 角色UUID,
     });
 
     const result = await this.获取机器人(uuid);

@@ -3,6 +3,10 @@ import type { Robot, RobotMetadata, RobotStatus } from './types'
 export type RawRobot = Partial<Robot> & {
   uuid: string
   status?: string | null
+  role_uuid?: string | null
+  role?: {
+    uuid?: string | null
+  } | null
 }
 
 export function parseRobotMetadata(metadata: RawRobot['metadata']): RobotMetadata {
@@ -75,6 +79,7 @@ export function normalizeRobot(rawRobot: RawRobot): Robot {
       typeof rawRobot.local_port === 'number'
         ? rawRobot.local_port
         : (typeof metadata.local_port === 'number' ? metadata.local_port : 10000),
+    role_id: rawRobot.role_id ?? rawRobot.role_uuid ?? rawRobot.role?.uuid ?? null,
     group_name: rawRobot.group_name ?? metadata.group_name ?? null,
     tags: normalizeRobotTags(rawRobot.tags),
     battery:
