@@ -151,8 +151,27 @@
       </div>
 
       <div class="input-area">
+        <el-tooltip
+          :content="isVoiceMode ? '切换到键盘输入' : '切换到按住说话'"
+          placement="top"
+        >
+          <el-button
+            class="input-mode-toggle"
+            circle
+            @click="toggleInputMode"
+          >
+            <el-icon v-if="!isVoiceMode">
+              <Microphone />
+            </el-icon>
+            <el-icon v-else>
+              <EditPen />
+            </el-icon>
+          </el-button>
+        </el-tooltip>
         <el-input
+          v-if="!isVoiceMode"
           v-model="inputText"
+          class="chat-input"
           type="textarea"
           :rows="3"
           placeholder="输入消息... (按 Ctrl+Enter 发送给大模型, Shift+Enter 发送给机器狗）"
@@ -160,8 +179,18 @@
           @keydown.ctrl.enter="() => sendMessage('ai')"
           @keydown.shift.enter.prevent="() => sendMessage('robot')"
         />
-        <div class="button-group">
-          <VoiceRecordButton size="default" />
+        <VoiceRecordButton
+          v-else
+          class="voice-input"
+          variant="press"
+          size="large"
+          idle-text="按住说话"
+          recording-text="松开发送"
+        />
+        <div
+          v-if="!isVoiceMode"
+          class="button-group"
+        >
           <el-button
             type="success"
             :disabled="!isConnected || !inputText.trim()"
@@ -201,6 +230,7 @@ import { useWebSocket } from '@/share/websocket/useWebSocket'
 import {
   ChatDotSquare,
   Clock,
+  EditPen,
   Lightning,
   Loading,
   Microphone,
@@ -229,6 +259,7 @@ const route = useRoute()
 const props = defineProps<{ robotUuid?: string }>()
 const messages = ref<ChatMessage[]>([])
 const inputText = ref('')
+const isVoiceMode = ref(false)
 const chatArea = ref<HTMLElement>()
 const messageCount = ref(0)
 const avgLatency = ref(0)
@@ -266,6 +297,13 @@ const { handleAudioResponse, handlePlayClick, requestTTS } = useChatAudio({
 
 const disconnect = () => {
   wsDisconnect()
+}
+
+const toggleInputMode = () => {
+  if (!isVoiceMode.value && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur()
+  }
+  isVoiceMode.value = !isVoiceMode.value
 }
 
 const resolveRobotUuid = () => {
@@ -714,9 +752,28 @@ watch(
   border-top: 1px solid var(--el-border-color);
   padding: 20px;
   display: flex;
+  align-items: flex-end;
   gap: 12px;
   background: white;
   flex-shrink: 0;
+}
+
+.input-mode-toggle {
+  flex-shrink: 0;
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.input-area :deep(.voice-record-btn--press) {
+  min-height: 72px;
 }
 
 .button-group {
@@ -724,6 +781,7 @@ watch(
   flex-direction: column;
   gap: 8px;
   min-width: 130px;
+  flex-shrink: 0;
 }
 
 .button-group .el-button {
@@ -759,6 +817,28 @@ watch(
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .input-area {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .chat-input,
+  .voice-input {
+    min-width: calc(100% - 52px);
+  }
+
+  .button-group {
+    width: 100%;
+    min-width: 0;
+    flex-direction: row;
+  }
+
+  .button-group .el-button {
+    flex: 1;
+  }
 }
 
 @keyframes slideIn {
