@@ -369,20 +369,17 @@ npm run build
 ```bash
 cd /path/to/robot-cloud
 
-# 首次运行会自动从仓库根目录 .env.example 复制出 .env
-./start-cloud.sh start
+# 如需自定义端口、域名或数据库账号，可先在仓库根目录创建 .env
+bash ./start.sh
 
 # 查看状态
-./start-cloud.sh status
-
-# 查看日志
-./start-cloud.sh logs
+bash ./start.sh status
 
 # 停止并保留容器
-./start-cloud.sh stop
+bash ./start.sh stop
 
-# 彻底关闭并移除容器网络
-./start-cloud.sh down
+# 更新生产数据库迁移
+bash ./start.sh --prod --db-upgrade
 ```
 
 部署结构：

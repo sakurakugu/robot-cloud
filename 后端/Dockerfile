@@ -15,10 +15,10 @@ FROM node:24-bookworm-slim AS runner
 
 WORKDIR /app
 
-ENV NODE_ENV=production
-
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --include=dev && npm cache clean --force
+
+ENV NODE_ENV=production
 
 COPY --from=builder /app/dist ./dist
 COPY migrations ./migrations
