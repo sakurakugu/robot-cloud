@@ -63,10 +63,18 @@
           </el-tab-pane>
 
           <el-tab-pane
+            v-if="registerEnabled"
             label="注册"
             name="register"
           >
             <el-form class="auth-form">
+              <el-alert
+                v-if="registerApprovalRequired"
+                type="warning"
+                :closable="false"
+                show-icon
+                title="当前注册需要主管理员审核，通过后才能登录"
+              />
               <el-form-item>
                 <el-input
                   v-model="registerForm.username"
@@ -101,6 +109,15 @@
           </el-tab-pane>
         </el-tabs>
 
+        <el-alert
+          v-if="!registerEnabled"
+          class="register-alert"
+          type="info"
+          :closable="false"
+          show-icon
+          title="当前已关闭新用户注册，请联系管理员开通"
+        />
+
         <el-divider>
           <span class="divider-text">或者</span>
         </el-divider>
@@ -122,11 +139,12 @@
 </template>
 
 <script setup lang="ts">
+import { getRegisterConfig } from '@/features/auth/api'
 import { useAuthStore } from '@/features/auth/store'
 import { Lock, User, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { Bot } from 'lucide-vue-next'
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -134,9 +152,25 @@ const authStore = useAuthStore()
 
 const activeTab = ref<'login' | 'register'>('login')
 const loading = ref(false)
+const registerEnabled = ref(true)
+const registerApprovalRequired = ref(false)
 
 const loginForm = reactive({ username: '', password: '' })
 const registerForm = reactive({ username: '', password: '' })
+
+const loadRegisterConfig = async () => {
+  try {
+    const res = await getRegisterConfig()
+    registerEnabled.value = res.data.registerEnabled
+    registerApprovalRequired.value = res.data.registerApprovalRequired
+    if (!registerEnabled.value && activeTab.value === 'register') {
+      activeTab.value = 'login'
+    }
+  } catch {
+    registerEnabled.value = true
+    registerApprovalRequired.value = false
+  }
+}
 
 const doLogin = async () => {
   try {
@@ -150,10 +184,24 @@ const doLogin = async () => {
 }
 
 const doRegister = async () => {
+  if (!registerEnabled.value) {
+    ElMessage.warning('当前已关闭新用户注册')
+    activeTab.value = 'login'
+    return
+  }
+
   try {
     loading.value = true
     const data = await authStore.register(registerForm.username, registerForm.password)
-    ElMessage.success(data.user.role === 'super_admin' ? '注册成功，你是首个用户，已设为主管理员' : '注册成功')
+    if (data.requiresApproval) {
+      ElMessage.success(data.message)
+      loginForm.username = registerForm.username.trim()
+      registerForm.password = ''
+      activeTab.value = 'login'
+      return
+    }
+
+    ElMessage.success(data.message || (data.user.role === 'super_admin' ? '注册成功，你是首个用户，已设为主管理员' : '注册成功'))
     router.replace('/robots')
   } finally {
     loading.value = false
@@ -164,6 +212,10 @@ const enterGuest = () => {
   authStore.enterGuestMode()
   router.replace('/home')
 }
+
+onMounted(() => {
+  loadRegisterConfig()
+})
 </script>
 
 <style scoped>
@@ -238,6 +290,10 @@ const enterGuest = () => {
 
 .guest-btn {
   margin-top: 0;
+}
+
+.register-alert {
+  margin-top: 16px;
 }
 
 .guest-icon {

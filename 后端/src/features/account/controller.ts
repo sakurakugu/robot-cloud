@@ -15,6 +15,16 @@ const 账号权限错误映射: Http错误映射规则[] = [
   { 匹配: [/权限/, /禁止/, /无权/], 状态码: 403 },
 ];
 
+const 注册错误映射: Http错误映射规则[] = [
+  { 匹配: '用户名已存在', 状态码: 409 },
+  { 匹配: '注册已关闭', 状态码: 403 },
+];
+
+const 登录错误映射: Http错误映射规则[] = [
+  { 匹配: '用户名或密码错误', 状态码: 401 },
+  { 匹配: [/待审核/, /已拒绝/, /已禁用/], 状态码: 403 },
+];
+
 function resolveClientType(req: Request): ClientType {
   const value = String(req.headers['x-client-type'] || '').toLowerCase();
   if (value === 'web' || value === 'mobile') {
@@ -75,6 +85,7 @@ export class AccountController {
     { 状态码: 201 },
   ), {
     默认错误状态码: 400,
+    错误映射: 注册错误映射,
   });
 
   login = 处理控制器(async (req: Request) => 返回数据(
@@ -86,7 +97,12 @@ export class AccountController {
     }),
   ), {
     默认错误状态码: 400,
+    错误映射: 登录错误映射,
   });
+
+  getRegisterConfig = 处理控制器(async () => 返回数据(
+    await this.accountService.getRegisterConfig(),
+  ));
 
   guest = 处理控制器(async () => 返回数据({
     mode: 'guest',
@@ -123,14 +139,23 @@ export class AccountController {
       keyword: resolveQueryValue(req.query.keyword),
       role: resolveQueryValue(req.query.role),
       is_active: resolveQueryValue(req.query.is_active),
+      approval_status: resolveQueryValue(req.query.approval_status),
     }));
   });
 
   createUser = 处理控制器(async (req: Request) => {
     const user = this.获取当前用户(req);
-    return 返回数据(await this.accountService.createManagedUser(user.role, req.body || {}), {
+    return 返回数据(await this.accountService.createManagedUser(user.id, user.role, req.body || {}), {
       状态码: 201,
     });
+  }, {
+    默认错误状态码: 400,
+    错误映射: 账号权限错误映射,
+  });
+
+  updateRegisterConfig = 处理控制器(async (req: Request) => {
+    const user = this.获取当前用户(req);
+    return 返回数据(await this.accountService.updateRegisterConfig(user.role, req.body || {}));
   }, {
     默认错误状态码: 400,
     错误映射: 账号权限错误映射,
@@ -161,6 +186,24 @@ export class AccountController {
   deleteUser = 处理控制器(async (req: Request) => {
     const user = this.获取当前用户(req);
     await this.accountService.deleteManagedUser(user.id, user.role, resolveParam(req.params.id));
+  });
+
+  reviewUserApproval = 处理控制器(async (req: Request) => {
+    const user = this.获取当前用户(req);
+    const approvalStatus = String(req.body?.approval_status || '').trim().toLowerCase();
+    if (!['approved', 'rejected'].includes(approvalStatus)) {
+      throw Http错误工厂.参数错误('审核状态无效');
+    }
+
+    return 返回数据(await this.accountService.reviewUserRegistration(
+      user.id,
+      user.role,
+      resolveParam(req.params.id),
+      approvalStatus as 'approved' | 'rejected',
+    ));
+  }, {
+    默认错误状态码: 400,
+    错误映射: 账号权限错误映射,
   });
 
   updateRole = 处理控制器(async (req: Request) => {

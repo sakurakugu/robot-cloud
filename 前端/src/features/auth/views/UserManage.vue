@@ -2,14 +2,18 @@
 import {
   createUser,
   deleteUser,
+  getRegisterConfig,
   getUsers,
   resetUserPassword,
+  updateRegisterConfig,
+  updateUserApproval,
   updateUser,
 } from '@/features/auth/api'
 import { useAuthStore } from '@/features/auth/store'
 import type {
   AccountRole,
   AuthUser,
+  RegistrationApprovalStatus,
   UserCreatePayload,
   UserListQuery,
   UserUpdatePayload,
@@ -31,6 +35,11 @@ const total = ref(0)
 const keyword = ref('')
 const roleFilter = ref('all')
 const activeFilter = ref('all')
+const approvalFilter = ref<'all' | RegistrationApprovalStatus>('all')
+const registerEnabled = ref(true)
+const registerApprovalRequired = ref(false)
+const registerConfigLoading = ref(false)
+const registerConfigSaving = ref(false)
 
 const showCreate = ref(false)
 const creating = ref(false)
@@ -84,6 +93,12 @@ const activeFilterOptions = [
   { label: '启用', value: 'active' },
   { label: '禁用', value: 'inactive' },
 ]
+const approvalFilterOptions = [
+  { label: '全部审核', value: 'all' },
+  { label: '待审核', value: 'pending' },
+  { label: '已通过', value: 'approved' },
+  { label: '已拒绝', value: 'rejected' },
+]
 
 const roleTagType: Record<AccountRole, 'info' | 'warning' | 'danger'> = {
   user: 'info',
@@ -91,10 +106,22 @@ const roleTagType: Record<AccountRole, 'info' | 'warning' | 'danger'> = {
   super_admin: 'danger',
 }
 
+const approvalTagType: Record<RegistrationApprovalStatus, 'warning' | 'success' | 'danger'> = {
+  pending: 'warning',
+  approved: 'success',
+  rejected: 'danger',
+}
+
 const roleLabel: Record<AccountRole, string> = {
   user: '普通用户',
   admin: '管理员',
   super_admin: '超级管理员',
+}
+
+const approvalLabel: Record<RegistrationApprovalStatus, string> = {
+  pending: '待审核',
+  approved: '已通过',
+  rejected: '已拒绝',
 }
 
 const currentUserId = computed(() => auth.user?.id ?? '')
@@ -128,6 +155,14 @@ function isOtherSuperAdmin(user: AuthUser) {
 
 function isDeleteDisabled(user: AuthUser) {
   return user.id === currentUserId.value || user.role === 'super_admin'
+}
+
+function canApprove(user: AuthUser) {
+  return user.approvalStatus !== 'approved'
+}
+
+function canReject(user: AuthUser) {
+  return user.approvalStatus === 'pending'
 }
 
 function validateUserForm(input: {
@@ -174,6 +209,7 @@ async function fetchUsers(resetPage = false) {
     if (roleFilter.value !== 'all') params.role = roleFilter.value
     if (activeFilter.value === 'active') params.is_active = true
     if (activeFilter.value === 'inactive') params.is_active = false
+    if (approvalFilter.value !== 'all') params.approval_status = approvalFilter.value
 
     const res = await getUsers(params)
     users.value = res.data.items
@@ -182,6 +218,48 @@ async function fetchUsers(resetPage = false) {
     pageSize.value = res.data.page_size
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchRegisterPolicy() {
+  registerConfigLoading.value = true
+  try {
+    const res = await getRegisterConfig()
+    registerEnabled.value = res.data.registerEnabled
+    registerApprovalRequired.value = res.data.registerApprovalRequired
+  } finally {
+    registerConfigLoading.value = false
+  }
+}
+
+async function saveRegisterPolicy(payload: {
+  registerEnabled?: boolean
+  registerApprovalRequired?: boolean
+}) {
+  registerConfigSaving.value = true
+  try {
+    const res = await updateRegisterConfig(payload)
+    registerEnabled.value = res.data.registerEnabled
+    registerApprovalRequired.value = res.data.registerApprovalRequired
+    ElMessage.success('注册配置已更新')
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.error || error?.message || '注册配置更新失败')
+  } finally {
+    registerConfigSaving.value = false
+  }
+}
+
+async function handleApproval(user: AuthUser, approvalStatus: RegistrationApprovalStatus) {
+  try {
+    await updateUserApproval(user.id, approvalStatus)
+    ElMessage.success(
+      approvalStatus === 'approved'
+        ? '已通过该用户的注册申请'
+        : '已拒绝该用户的注册申请',
+    )
+    await fetchUsers()
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.error || error?.message || '审核失败')
   }
 }
 
@@ -325,6 +403,7 @@ function handlePageSizeChange(nextPageSize: number) {
 }
 
 onMounted(() => {
+  fetchRegisterPolicy()
   fetchUsers()
 })
 </script>
@@ -344,6 +423,51 @@ onMounted(() => {
         新增用户
       </el-button>
     </div>
+
+    <el-card
+      class="policy-card"
+      shadow="hover"
+    >
+      <div class="policy-grid">
+        <div class="policy-item">
+          <div class="policy-main">
+            <div class="policy-title-row">
+              <span class="policy-title">允许新用户注册</span>
+              <el-tag :type="registerEnabled ? 'success' : 'danger'">
+                {{ registerEnabled ? '已开启' : '已关闭' }}
+              </el-tag>
+            </div>
+            <div class="policy-desc">
+              关闭后登录页和手机端将隐藏注册入口，后端也会拒绝注册请求
+            </div>
+          </div>
+          <el-switch
+            :model-value="registerEnabled"
+            :loading="registerConfigLoading || registerConfigSaving"
+            @update:model-value="saveRegisterPolicy({ registerEnabled: Boolean($event) })"
+          />
+        </div>
+
+        <div class="policy-item">
+          <div class="policy-main">
+            <div class="policy-title-row">
+              <span class="policy-title">注册后需要审核</span>
+              <el-tag :type="registerApprovalRequired ? 'warning' : 'info'">
+                {{ registerApprovalRequired ? '已开启' : '已关闭' }}
+              </el-tag>
+            </div>
+            <div class="policy-desc">
+              开启后，新注册账号会进入待审核状态，主管理员通过后才能登录
+            </div>
+          </div>
+          <el-switch
+            :model-value="registerApprovalRequired"
+            :loading="registerConfigLoading || registerConfigSaving"
+            @update:model-value="saveRegisterPolicy({ registerApprovalRequired: Boolean($event) })"
+          />
+        </div>
+      </div>
+    </el-card>
 
     <el-card
       class="filter-card"
@@ -379,6 +503,17 @@ onMounted(() => {
             :value="item.value"
           />
         </el-select>
+        <el-select
+          v-model="approvalFilter"
+          style="width: 120px"
+        >
+          <el-option
+            v-for="item in approvalFilterOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
         <el-button @click="fetchUsers(true)">
           查询
         </el-button>
@@ -399,7 +534,12 @@ onMounted(() => {
           v-for="item in users"
           :key="item.id"
           class="user-item"
-          :class="{ 'is-active': item.isActive, 'is-inactive': !item.isActive }"
+          :class="{
+            'is-active': item.isActive,
+            'is-inactive': !item.isActive,
+            'is-pending': item.approvalStatus === 'pending',
+            'is-rejected': item.approvalStatus === 'rejected',
+          }"
         >
           <div class="user-row">
             <div class="user-main">
@@ -420,6 +560,9 @@ onMounted(() => {
                 >
                   {{ item.isActive ? '启用' : '禁用' }}
                 </el-tag>
+                <el-tag :type="approvalTagType[item.approvalStatus]">
+                  {{ approvalLabel[item.approvalStatus] }}
+                </el-tag>
               </div>
               <div class="user-meta">
                 {{ item.email }}
@@ -439,9 +582,30 @@ onMounted(() => {
               <div class="user-meta">
                 最近登录：{{ formatUserDate(item.lastLoginAt) }}
               </div>
+              <div class="user-meta">
+                审核时间：{{ item.approvalReviewedAt ? formatDateTime(item.approvalReviewedAt) : '未审核' }}
+              </div>
             </div>
 
             <div class="user-actions">
+              <el-button
+                v-if="canApprove(item)"
+                size="small"
+                type="primary"
+                plain
+                @click="handleApproval(item, 'approved')"
+              >
+                {{ item.approvalStatus === 'rejected' ? '改为通过' : '通过' }}
+              </el-button>
+              <el-button
+                v-if="canReject(item)"
+                size="small"
+                type="danger"
+                plain
+                @click="handleApproval(item, 'rejected')"
+              >
+                拒绝
+              </el-button>
               <el-button
                 size="small"
                 :disabled="isOtherSuperAdmin(item)"
@@ -688,6 +852,50 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
+.policy-card {
+  margin-bottom: 12px;
+}
+
+.policy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.policy-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--el-fill-color-light);
+}
+
+.policy-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.policy-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.policy-title {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.policy-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+}
+
 .filter-toolbar {
   display: flex;
   align-items: center;
@@ -712,6 +920,14 @@ onMounted(() => {
 
 .user-item.is-active {
   border-left-color: #18a058;
+}
+
+.user-item.is-pending {
+  border-left-color: #e6a23c;
+}
+
+.user-item.is-rejected {
+  border-left-color: #f56c6c;
 }
 
 .user-item.is-inactive {
@@ -774,6 +990,11 @@ onMounted(() => {
 
   .filter-toolbar {
     align-items: stretch;
+  }
+
+  .policy-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

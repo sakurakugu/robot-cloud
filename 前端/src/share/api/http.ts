@@ -56,11 +56,11 @@ request.interceptors.response.use(
           message = (data as any)?.error || '请求参数错误'
           break
         case 401:
-          message = '未授权，请登录'
+          message = (data as any)?.error || '未授权，请登录'
           // 可以在这里处理登录跳转
           break
         case 403:
-          message = '拒绝访问'
+          message = (data as any)?.error || '拒绝访问'
           break
         case 404:
           message = '请求的资源不存在'

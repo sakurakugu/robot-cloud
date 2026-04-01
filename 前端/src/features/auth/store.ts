@@ -46,10 +46,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function register(username: string, password: string) {
     const res = await registerAccount({ username, password })
-    token.value = res.data.token
-    user.value = res.data.user
-    mode.value = 'authenticated'
-    persist()
+    if (res.data.token && res.data.user) {
+      token.value = res.data.token
+      user.value = res.data.user
+      mode.value = 'authenticated'
+      persist()
+    } else {
+      enterGuestMode()
+    }
     return res.data
   }
 

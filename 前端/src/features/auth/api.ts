@@ -2,16 +2,19 @@ import { http } from '@/share/api/http';
 import type {
   ApiResp,
   AuthPayload,
+  RegisterConfig,
+  RegisterResult,
   AuthUser,
   LoginSession,
   UserCreatePayload,
   UserListQuery,
   UserListResult,
+  RegistrationApprovalStatus,
   UserUpdatePayload,
 } from './types';
 
 export function registerAccount(payload: { username: string; password: string }) {
-  return http.post<ApiResp<AuthPayload>>('/api/v1/auth/register', payload, {
+  return http.post<ApiResp<RegisterResult>>('/api/v1/auth/register', payload, {
     headers: {
       'x-client-type': 'web',
       'x-device-name': navigator.userAgent,
@@ -44,6 +47,14 @@ export function revokeSession(id: string) {
   return http.delete<ApiResp<{ success: boolean }>>(`/api/v1/auth/sessions/${id}`)
 }
 
+export function getRegisterConfig() {
+  return http.get<ApiResp<RegisterConfig>>('/api/v1/auth/register-config')
+}
+
+export function updateRegisterConfig(payload: Partial<RegisterConfig>) {
+  return http.put<ApiResp<RegisterConfig>>('/api/v1/auth/register-config', payload)
+}
+
 export function getUsers(query: UserListQuery) {
   return http.get<ApiResp<UserListResult>>('/api/v1/auth/users', {
     params: query,
@@ -56,6 +67,12 @@ export function createUser(payload: UserCreatePayload) {
 
 export function updateUser(id: string, payload: UserUpdatePayload) {
   return http.patch<ApiResp<AuthUser>>(`/api/v1/auth/users/${id}`, payload)
+}
+
+export function updateUserApproval(id: string, approvalStatus: RegistrationApprovalStatus) {
+  return http.patch<ApiResp<AuthUser>>(`/api/v1/auth/users/${id}/approval`, {
+    approval_status: approvalStatus,
+  })
 }
 
 export function resetUserPassword(id: string, password: string) {

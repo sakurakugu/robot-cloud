@@ -1,5 +1,6 @@
 import { v7 as uuidv7 } from 'uuid';
 import { logger } from '../../infra/logger';
+import type { SettingsRepository } from '../设置/repository';
 import { createSessionToken, hashPassword, hashSessionToken, verifyPassword } from './password';
 import type { AccountRepository } from './repository';
 import type {
@@ -8,7 +9,11 @@ import type {
   ClientType,
   CreateManagedUserInput,
   LoginSessionView,
+  RegisterConfigView,
+  RegisterResult,
+  RegistrationApprovalStatus,
   SafeUser,
+  UpdateRegisterConfigInput,
   UpdateManagedUserInput,
   UserListQuery,
   UserListView,
@@ -40,9 +45,14 @@ const 邮箱正则 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const 列表默认页码 = 1;
 const 列表默认每页数量 = 10;
 const 列表最大每页数量 = 100;
+const 注册开关设置键 = 'auth.register.enabled';
+const 注册审核设置键 = 'auth.register.approval_required';
 
 export class AccountService {
-  constructor(private repository: AccountRepository) {}
+  constructor(
+    private repository: AccountRepository,
+    private settingsRepository: SettingsRepository,
+  ) {}
 
   private toSafeUser(user: UserRecord): SafeUser {
     return {
@@ -54,6 +64,9 @@ export class AccountService {
       bio: user.bio,
       isActive: user.is_active,
       role: user.role,
+      approvalStatus: user.approval_status,
+      approvalReviewedAt: user.approval_reviewed_at,
+      approvalReviewedBy: user.approval_reviewed_by,
       createdAt: user.created_at,
       updatedAt: user.updated_at,
       lastLoginAt: user.last_login_at,
@@ -135,6 +148,42 @@ export class AccountService {
     return null;
   }
 
+  private 解析审核状态筛选(
+    value: UserListQuery['approval_status'],
+  ): RegistrationApprovalStatus | null {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized === 'pending' || normalized === 'approved' || normalized === 'rejected') {
+      return normalized;
+    }
+    return null;
+  }
+
+  private 解析布尔设置(value: string | undefined, defaultValue: boolean): boolean {
+    if (value === undefined) {
+      return defaultValue;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0') {
+      return false;
+    }
+    return defaultValue;
+  }
+
+  private async 获取注册配置(): Promise<RegisterConfigView> {
+    const settings = await this.settingsRepository.getSettings([
+      注册开关设置键,
+      注册审核设置键,
+    ]);
+
+    return {
+      registerEnabled: this.解析布尔设置(settings[注册开关设置键], true),
+      registerApprovalRequired: this.解析布尔设置(settings[注册审核设置键], false),
+    };
+  }
+
   private async 断言用户名可用(
     repository: AccountRepository,
     username: string,
@@ -200,7 +249,7 @@ export class AccountService {
     return { token, session };
   }
 
-  async register(input: RegisterInput, meta: LoginMeta) {
+  async register(input: RegisterInput, meta: LoginMeta): Promise<RegisterResult> {
     const username = input.username.trim();
     this.validateCredentials(username, input.password);
 
@@ -214,9 +263,22 @@ export class AccountService {
         }
 
         const isFirstUser = (await repository.countUsers()) === 0;
+        const registerConfig = isFirstUser
+          ? { registerEnabled: true, registerApprovalRequired: false }
+          : await this.获取注册配置();
+        if (!registerConfig.registerEnabled) {
+          throw new Error('注册已关闭');
+        }
+
         const role: AccountRole = isFirstUser ? 'super_admin' : 'user';
+        const approvalStatus: RegistrationApprovalStatus = (
+          isFirstUser || !registerConfig.registerApprovalRequired
+        ) ? 'approved' : 'pending';
         const userId = uuidv7();
         const passwordHash = hashPassword(input.password);
+        const approvalReviewedAt = approvalStatus === 'approved'
+          ? new Date().toISOString()
+          : null;
 
         await repository.createUser({
           id: userId,
@@ -228,11 +290,30 @@ export class AccountService {
           bio: null,
           is_active: true,
           role,
+          approval_status: approvalStatus,
+          approval_reviewed_at: approvalReviewedAt,
+          approval_reviewed_by: null,
         });
 
         const createdUser = await repository.getUserById(userId);
         if (!createdUser) {
           throw new Error('创建用户失败');
+        }
+
+        if (approvalStatus !== 'approved') {
+          logger.info('用户注册成功，等待审核', {
+            username,
+            role,
+            userId,
+          });
+
+          return {
+            token: null,
+            user: this.toSafeUser(createdUser),
+            session: null,
+            requiresApproval: true,
+            message: '注册申请已提交，等待管理员审核',
+          };
         }
 
         const { token, session } = await this.createUserSession(repository, userId, meta);
@@ -244,6 +325,8 @@ export class AccountService {
           token,
           user: this.toSafeUser(createdUser),
           session: this.buildSessionView(session, session.id),
+          requiresApproval: false,
+          message: isFirstUser ? '注册成功，你是首个用户，已设为主管理员' : '注册成功',
         };
       });
     } catch (error) {
@@ -261,6 +344,12 @@ export class AccountService {
     const user = await this.repository.getUserByUsername(username);
     if (!user || !verifyPassword(input.password, user.password_hash)) {
       throw new Error('用户名或密码错误');
+    }
+    if (user.approval_status === 'pending') {
+      throw new Error('账号待审核');
+    }
+    if (user.approval_status === 'rejected') {
+      throw new Error('注册申请已拒绝');
     }
     if (!user.is_active) {
       throw new Error('账号已禁用');
@@ -296,7 +385,7 @@ export class AccountService {
     }
 
     const user = await this.repository.getUserById(session.user_id);
-    if (!user || !user.is_active) {
+    if (!user || !user.is_active || user.approval_status !== 'approved') {
       return null;
     }
 
@@ -369,6 +458,7 @@ export class AccountService {
     const keyword = String(query.keyword || '').trim().toLowerCase();
     const role = String(query.role || '').trim();
     const isActive = this.解析启用状态筛选(query.is_active);
+    const approvalStatus = this.解析审核状态筛选(query.approval_status);
 
     const filteredUsers = (await this.repository.listUsers())
       .filter((user) => {
@@ -376,6 +466,9 @@ export class AccountService {
           return false;
         }
         if (isActive !== null && user.is_active !== isActive) {
+          return false;
+        }
+        if (approvalStatus !== null && user.approval_status !== approvalStatus) {
           return false;
         }
         if (!keyword) {
@@ -411,7 +504,11 @@ export class AccountService {
     };
   }
 
-  async createManagedUser(operatorRole: AccountRole, input: CreateManagedUserInput): Promise<SafeUser> {
+  async createManagedUser(
+    operatorUserId: string,
+    operatorRole: AccountRole,
+    input: CreateManagedUserInput,
+  ): Promise<SafeUser> {
     if (operatorRole !== 'super_admin') {
       throw new Error('仅主管理员可创建用户');
     }
@@ -439,6 +536,9 @@ export class AccountService {
         bio: this.规范化可空文本(input.bio),
         is_active: input.is_active !== false,
         role: input.role,
+        approval_status: 'approved',
+        approval_reviewed_at: new Date().toISOString(),
+        approval_reviewed_by: operatorUserId,
       });
 
       const created = await repository.getUserById(userId);
@@ -575,6 +675,76 @@ export class AccountService {
       }
 
       await repository.deleteUser(userId);
+    });
+  }
+
+  async getRegisterConfig(): Promise<RegisterConfigView> {
+    return this.获取注册配置();
+  }
+
+  async updateRegisterConfig(
+    operatorRole: AccountRole,
+    input: UpdateRegisterConfigInput,
+  ): Promise<RegisterConfigView> {
+    if (operatorRole !== 'super_admin') {
+      throw new Error('仅主管理员可配置注册策略');
+    }
+
+    const tasks: Promise<void>[] = [];
+    if (typeof input.registerEnabled === 'boolean') {
+      tasks.push(this.settingsRepository.setSetting(注册开关设置键, String(input.registerEnabled)));
+    }
+    if (typeof input.registerApprovalRequired === 'boolean') {
+      tasks.push(this.settingsRepository.setSetting(注册审核设置键, String(input.registerApprovalRequired)));
+    }
+    await Promise.all(tasks);
+
+    return this.获取注册配置();
+  }
+
+  async reviewUserRegistration(
+    operatorUserId: string,
+    operatorRole: AccountRole,
+    userId: string,
+    status: RegistrationApprovalStatus,
+  ): Promise<SafeUser> {
+    if (operatorRole !== 'super_admin') {
+      throw new Error('仅主管理员可审核注册');
+    }
+
+    if (!['approved', 'rejected'].includes(status)) {
+      throw new Error('审核状态无效');
+    }
+
+    return this.repository.withTransaction(async (repository) => {
+      await repository.lockUsersTable();
+
+      const user = await repository.getUserById(userId);
+      if (!user) {
+        throw new Error('用户不存在');
+      }
+
+      if (user.approval_status === 'approved' && status === 'rejected') {
+        throw new Error('已审核通过的用户请使用禁用功能控制登录');
+      }
+
+      if (user.approval_status !== status) {
+        await repository.updateUserApproval(userId, {
+          approval_status: status,
+          approval_reviewed_at: new Date().toISOString(),
+          approval_reviewed_by: operatorUserId,
+        });
+      }
+
+      if (status === 'rejected') {
+        await repository.revokeUserSessionsByUserId(userId);
+      }
+
+      const updated = await repository.getUserById(userId);
+      if (!updated) {
+        throw new Error('审核失败');
+      }
+      return this.toSafeUser(updated);
     });
   }
 

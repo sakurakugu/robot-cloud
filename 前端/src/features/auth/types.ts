@@ -1,4 +1,5 @@
 export type AccountRole = 'user' | 'admin' | 'super_admin'
+export type RegistrationApprovalStatus = 'pending' | 'approved' | 'rejected'
 
 export interface AuthUser {
   id: string
@@ -9,6 +10,9 @@ export interface AuthUser {
   bio: string | null
   isActive: boolean
   role: AccountRole
+  approvalStatus: RegistrationApprovalStatus
+  approvalReviewedAt: string | null
+  approvalReviewedBy: string | null
   createdAt: string
   updatedAt: string
   lastLoginAt: string | null
@@ -32,6 +36,19 @@ export interface AuthPayload {
   session: LoginSession
 }
 
+export interface RegisterResult {
+  token: string | null
+  user: AuthUser
+  session: LoginSession | null
+  requiresApproval: boolean
+  message: string
+}
+
+export interface RegisterConfig {
+  registerEnabled: boolean
+  registerApprovalRequired: boolean
+}
+
 export interface ApiResp<T> {
   success: boolean
   data: T
@@ -53,6 +70,7 @@ export interface UserListQuery {
   keyword?: string
   role?: string
   is_active?: boolean
+  approval_status?: RegistrationApprovalStatus
 }
 
 export interface UserCreatePayload {

@@ -3,6 +3,7 @@ import type { 可事务数据库, 可查询数据库 } from '../../infra/db/clie
 import type {
   AccountRole,
   ClientType,
+  RegistrationApprovalStatus,
   UpdateManagedUserInput,
   UserRecord,
   UserSessionRecord,
@@ -18,6 +19,9 @@ type 创建用户输入 = {
   bio: string | null;
   is_active: boolean;
   role: AccountRole;
+  approval_status: RegistrationApprovalStatus;
+  approval_reviewed_at: string | null;
+  approval_reviewed_by: string | null;
 };
 
 type 创建会话输入 = {
@@ -29,6 +33,12 @@ type 创建会话输入 = {
   ip_address: string | null;
   user_agent: string | null;
   expires_at: string;
+};
+
+type 更新用户审核输入 = {
+  approval_status: RegistrationApprovalStatus;
+  approval_reviewed_at: string | null;
+  approval_reviewed_by: string | null;
 };
 
 type 可用数据库 = 可查询数据库 | 可事务数据库;
@@ -50,6 +60,7 @@ export interface AccountRepository {
   touchUserLogin(id: string): Promise<void>;
   updateUserRole(id: string, role: AccountRole): Promise<void>;
   updateUser(id: string, data: UpdateManagedUserInput): Promise<void>;
+  updateUserApproval(id: string, data: 更新用户审核输入): Promise<void>;
   updateUserPassword(id: string, passwordHash: string): Promise<void>;
   deleteUser(id: string): Promise<void>;
   createUserSession(data: 创建会话输入): Promise<void>;
@@ -96,9 +107,10 @@ export class PostgresAccountRepository implements AccountRepository {
   async createUser(data: 创建用户输入): Promise<void> {
     await this.database.query(
       `INSERT INTO users
-        (id, username, password_hash, nickname, email, avatar_url, bio, is_active, role, created_at, updated_at)
+        (id, username, password_hash, nickname, email, avatar_url, bio, is_active, role,
+         approval_status, approval_reviewed_at, approval_reviewed_by, created_at, updated_at)
        VALUES
-        ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
         data.id,
         data.username,
@@ -109,6 +121,9 @@ export class PostgresAccountRepository implements AccountRepository {
         data.bio,
         data.is_active,
         data.role,
+        data.approval_status,
+        data.approval_reviewed_at,
+        data.approval_reviewed_by,
       ],
     );
   }
@@ -170,6 +185,23 @@ export class PostgresAccountRepository implements AccountRepository {
         data.bio ?? null,
         data.is_active,
         data.role,
+        id,
+      ],
+    );
+  }
+
+  async updateUserApproval(id: string, data: 更新用户审核输入): Promise<void> {
+    await this.database.query(
+      `UPDATE users
+       SET approval_status = $1,
+           approval_reviewed_at = $2,
+           approval_reviewed_by = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4`,
+      [
+        data.approval_status,
+        data.approval_reviewed_at,
+        data.approval_reviewed_by,
         id,
       ],
     );

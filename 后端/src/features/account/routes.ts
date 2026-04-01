@@ -6,9 +6,11 @@ export function createAccountRoutes(controller: AccountController): Router {
   const router = Router();
 
   router.post('/register', controller.register);
+  router.get('/register-config', controller.getRegisterConfig);
   router.post('/login', controller.login);
   router.post('/guest', controller.guest);
   router.get('/context', controller.resolveContext);
+  router.put('/register-config', requireRole('super_admin'), controller.updateRegisterConfig);
 
   router.get('/me', requireAuth, controller.me);
   router.post('/logout', requireAuth, controller.logout);
@@ -18,6 +20,7 @@ export function createAccountRoutes(controller: AccountController): Router {
 
   router.get('/users', requireRole('super_admin'), controller.listUsers);
   router.post('/users', requireRole('super_admin'), controller.createUser);
+  router.patch('/users/:id/approval', requireRole('super_admin'), controller.reviewUserApproval);
   router.patch('/users/:id', requireRole('super_admin'), controller.updateUser);
   router.patch('/users/:id/password', requireRole('super_admin'), controller.resetUserPassword);
   router.delete('/users/:id', requireRole('super_admin'), controller.deleteUser);

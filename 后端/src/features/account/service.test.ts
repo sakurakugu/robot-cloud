@@ -1,6 +1,7 @@
 import type { AccountRepository } from './repository';
 import { AccountService } from './service';
 import type { AccountRole, UserRecord, UserSessionRecord } from './types';
+import type { SettingsRepository } from '../设置/repository';
 
 jest.mock('uuid', () => ({
   v7: jest.fn(() => 'user-1'),
@@ -24,6 +25,9 @@ function 创建用户(role: AccountRole = 'user'): UserRecord {
     bio: null,
     is_active: true,
     role,
+    approval_status: 'approved',
+    approval_reviewed_at: '2026-01-01T00:00:00.000Z',
+    approval_reviewed_by: 'super-1',
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     last_login_at: null,
@@ -60,6 +64,7 @@ function 创建仓库Mock(): jest.Mocked<AccountRepository> {
     touchUserLogin: jest.fn(),
     updateUserRole: jest.fn(),
     updateUser: jest.fn(),
+    updateUserApproval: jest.fn(),
     updateUserPassword: jest.fn(),
     deleteUser: jest.fn(),
     createUserSession: jest.fn(),
@@ -76,9 +81,20 @@ function 创建仓库Mock(): jest.Mocked<AccountRepository> {
   return repository;
 }
 
+function 创建设置仓库Mock(): jest.Mocked<SettingsRepository> {
+  return {
+    getSetting: jest.fn(),
+    getSettings: jest.fn().mockResolvedValue({}),
+    getAllSettings: jest.fn(),
+    setSetting: jest.fn(),
+    deleteSetting: jest.fn(),
+  };
+}
+
 describe('AccountService', () => {
   it('首个注册用户应成为主管理员', async () => {
     const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
     const user = 创建用户('super_admin');
     const session = 创建会话();
 
@@ -87,7 +103,7 @@ describe('AccountService', () => {
     repository.getUserById.mockResolvedValue(user);
     repository.getUserSessionById.mockResolvedValue(session);
 
-    const service = new AccountService(repository);
+    const service = new AccountService(repository, settingsRepository);
     const result = await service.register(
       { username: 'tester', password: 'secret123' },
       { clientType: 'web', deviceName: 'Chrome', ipAddress: '127.0.0.1', userAgent: 'jest' },
@@ -104,17 +120,19 @@ describe('AccountService', () => {
     );
     expect(result.token).toBe('session-token');
     expect(result.user.role).toBe('super_admin');
-    expect(result.session.id).toBe('session-1');
+    expect(result.session?.id).toBe('session-1');
+    expect(result.requiresApproval).toBe(false);
   });
 
   it('密码错误时登录应失败', async () => {
     const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
     repository.getUserByUsername.mockResolvedValue({
       ...创建用户(),
       password_hash: 'hash:other-password',
     });
 
-    const service = new AccountService(repository);
+    const service = new AccountService(repository, settingsRepository);
 
     await expect(
       service.login(
@@ -126,10 +144,11 @@ describe('AccountService', () => {
 
   it('有效 token 应返回认证上下文并刷新会话活跃时间', async () => {
     const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
     repository.getUserSessionByTokenHash.mockResolvedValue(创建会话());
     repository.getUserById.mockResolvedValue(创建用户());
 
-    const service = new AccountService(repository);
+    const service = new AccountService(repository, settingsRepository);
     const context = await service.buildUserContext('session-token');
 
     expect(context.mode).toBe('authenticated');
@@ -139,10 +158,11 @@ describe('AccountService', () => {
 
   it('不能把最后一个主管理员降权', async () => {
     const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
     repository.getUserById.mockResolvedValue(创建用户('super_admin'));
     repository.countUsersByRole.mockResolvedValue(1);
 
-    const service = new AccountService(repository);
+    const service = new AccountService(repository, settingsRepository);
 
     await expect(
       service.updateUserRole('super_admin', 'user-1', 'admin'),
@@ -151,6 +171,7 @@ describe('AccountService', () => {
 
   it('主管理员应可创建管理用户', async () => {
     const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
     repository.getUserByUsername.mockResolvedValue(undefined);
     repository.getUserByEmail.mockResolvedValue(undefined);
     repository.getUserById.mockResolvedValue({
@@ -160,8 +181,8 @@ describe('AccountService', () => {
       email: 'manager@example.com',
     });
 
-    const service = new AccountService(repository);
-    const result = await service.createManagedUser('super_admin', {
+    const service = new AccountService(repository, settingsRepository);
+    const result = await service.createManagedUser('super-1', 'super_admin', {
       username: 'manager',
       email: 'manager@example.com',
       password: 'secret123',
@@ -180,6 +201,7 @@ describe('AccountService', () => {
 
   it('禁用用户时应撤销其会话', async () => {
     const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
     repository.getUserById.mockResolvedValue(创建用户('user'));
     repository.getUserByUsername.mockResolvedValue(undefined);
     repository.getUserByEmail.mockResolvedValue(undefined);
@@ -190,7 +212,7 @@ describe('AccountService', () => {
       is_active: false,
     });
 
-    const service = new AccountService(repository);
+    const service = new AccountService(repository, settingsRepository);
     await service.updateManagedUser('super-1', 'super_admin', 'user-1', {
       username: 'tester',
       nickname: '测试用户',
@@ -206,10 +228,105 @@ describe('AccountService', () => {
 
   it('不能删除当前登录账号', async () => {
     const repository = 创建仓库Mock();
-    const service = new AccountService(repository);
+    const settingsRepository = 创建设置仓库Mock();
+    const service = new AccountService(repository, settingsRepository);
 
     await expect(
       service.deleteManagedUser('user-1', 'super_admin', 'user-1'),
     ).rejects.toThrow('不能删除当前登录账号');
+  });
+
+  it('开启注册审核时应创建待审核账号且不签发会话', async () => {
+    const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
+    repository.getUserByUsername.mockResolvedValue(undefined);
+    repository.countUsers.mockResolvedValue(2);
+    repository.getUserById.mockResolvedValue({
+      ...创建用户(),
+      approval_status: 'pending',
+      approval_reviewed_at: null,
+      approval_reviewed_by: null,
+    });
+    settingsRepository.getSettings.mockResolvedValue({
+      'auth.register.enabled': 'true',
+      'auth.register.approval_required': 'true',
+    });
+
+    const service = new AccountService(repository, settingsRepository);
+    const result = await service.register(
+      { username: 'tester', password: 'secret123' },
+      { clientType: 'web' },
+    );
+
+    expect(result.requiresApproval).toBe(true);
+    expect(result.token).toBeNull();
+    expect(result.session).toBeNull();
+    expect(repository.createUserSession).not.toHaveBeenCalled();
+  });
+
+  it('待审核账号登录应失败', async () => {
+    const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
+    repository.getUserByUsername.mockResolvedValue({
+      ...创建用户(),
+      approval_status: 'pending',
+      approval_reviewed_at: null,
+      approval_reviewed_by: null,
+    });
+
+    const service = new AccountService(repository, settingsRepository);
+
+    await expect(
+      service.login(
+        { username: 'tester', password: 'secret123' },
+        { clientType: 'web' },
+      ),
+    ).rejects.toThrow('账号待审核');
+  });
+
+  it('主管理员应可更新注册配置', async () => {
+    const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
+    settingsRepository.getSettings.mockResolvedValue({
+      'auth.register.enabled': 'false',
+      'auth.register.approval_required': 'true',
+    });
+
+    const service = new AccountService(repository, settingsRepository);
+    const result = await service.updateRegisterConfig('super_admin', {
+      registerEnabled: false,
+      registerApprovalRequired: true,
+    });
+
+    expect(settingsRepository.setSetting).toHaveBeenCalledWith('auth.register.enabled', 'false');
+    expect(settingsRepository.setSetting).toHaveBeenCalledWith('auth.register.approval_required', 'true');
+    expect(result).toEqual({
+      registerEnabled: false,
+      registerApprovalRequired: true,
+    });
+  });
+
+  it('主管理员应可审核通过待审核用户', async () => {
+    const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
+    repository.getUserById.mockResolvedValueOnce({
+      ...创建用户(),
+      approval_status: 'pending',
+      approval_reviewed_at: null,
+      approval_reviewed_by: null,
+    });
+    repository.getUserById.mockResolvedValueOnce({
+      ...创建用户(),
+      approval_status: 'approved',
+    });
+
+    const service = new AccountService(repository, settingsRepository);
+    const result = await service.reviewUserRegistration('super-1', 'super_admin', 'user-1', 'approved');
+
+    expect(repository.updateUserApproval).toHaveBeenCalledWith('user-1', expect.objectContaining({
+      approval_status: 'approved',
+      approval_reviewed_by: 'super-1',
+    }));
+    expect(result.approvalStatus).toBe('approved');
   });
 });

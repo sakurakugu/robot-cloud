@@ -1,4 +1,5 @@
 export type AccountRole = 'user' | 'admin' | 'super_admin';
+export type RegistrationApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 export interface UserRecord {
   id: string;
@@ -10,6 +11,9 @@ export interface UserRecord {
   bio: string | null;
   is_active: boolean;
   role: AccountRole;
+  approval_status: RegistrationApprovalStatus;
+  approval_reviewed_at: string | null;
+  approval_reviewed_by: string | null;
   created_at: string;
   updated_at: string;
   last_login_at: string | null;
@@ -24,6 +28,9 @@ export interface SafeUser {
   bio: string | null;
   isActive: boolean;
   role: AccountRole;
+  approvalStatus: RegistrationApprovalStatus;
+  approvalReviewedAt: string | null;
+  approvalReviewedBy: string | null;
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
@@ -35,6 +42,7 @@ export interface UserListQuery {
   keyword?: string;
   role?: string;
   is_active?: string | boolean;
+  approval_status?: string;
 }
 
 export interface UserListView {
@@ -66,6 +74,16 @@ export interface UpdateManagedUserInput {
   avatar_url?: string | null;
 }
 
+export interface RegisterConfigView {
+  registerEnabled: boolean;
+  registerApprovalRequired: boolean;
+}
+
+export interface UpdateRegisterConfigInput {
+  registerEnabled?: boolean;
+  registerApprovalRequired?: boolean;
+}
+
 export type ClientType = 'web' | 'mobile' | 'unknown';
 
 export interface UserSessionRecord {
@@ -92,6 +110,14 @@ export interface LoginSessionView {
   lastSeenAt: string;
   expiresAt: string;
   current: boolean;
+}
+
+export interface RegisterResult {
+  token: string | null;
+  user: SafeUser;
+  session: LoginSessionView | null;
+  requiresApproval: boolean;
+  message: string;
 }
 
 export interface AuthContext {

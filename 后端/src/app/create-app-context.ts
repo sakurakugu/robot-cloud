@@ -131,6 +131,7 @@ export async function createAppContext(): Promise<应用上下文> {
     机器人包服务: 机器人包服务实例,
     账号服务: new AccountService(
       new PostgresAccountRepository(异步数据库),
+      设置仓库,
     ),
     知识库服务: new KnowledgeService(
       new PostgresKnowledgeRepository(异步数据库),
