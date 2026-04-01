@@ -20,8 +20,8 @@
             @click="emit('enable-edit')"
           />
           <el-button
+            v-if="clipboardPasteEnabled"
             :icon="CopyDocument"
-            :disabled="!clipboardPasteEnabled"
             @click="emit('paste')"
           />
         </el-button-group>
