@@ -10,10 +10,17 @@ export class 设置控制器 {
   constructor(private settingsService: 设置服务) {}
 
   getAIConfig = 处理控制器(async () => 返回数据(await this.settingsService.getAIConfig()));
+  getSystemConfig = 处理控制器(async () => 返回数据(await this.settingsService.getSystemConfig()));
 
   updateAIConfig = 处理控制器(async (req: Request) => 返回数据(
     await this.settingsService.updateAIConfig(req.body || {}),
   ), {
+    默认错误状态码: 400,
+  });
+
+  updateSystemConfig = 处理控制器(async (req: Request) => {
+    await this.settingsService.updateSystemConfig(req.body || {});
+  }, {
     默认错误状态码: 400,
   });
 

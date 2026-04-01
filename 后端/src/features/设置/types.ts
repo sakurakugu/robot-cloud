@@ -8,6 +8,13 @@ export interface UIConfig {
     controlLayout: Record<string, { x: number; y: number }> | null;
 }
 
+/**
+ * 系统配置
+ */
+export interface SystemConfig {
+    allowSecretClipboardPaste: boolean;
+}
+
 export interface AIConfig {
     xunfeiAsr: {
         hasAppId: boolean;

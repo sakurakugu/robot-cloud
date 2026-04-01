@@ -92,6 +92,8 @@ export async function createApp(context: 应用上下文): Promise<express.Appli
   }));
   受保护路由器.use('/config', createSettingsRoutes(context.控制器.设置控制器, {
     updateAI: requireRole('super_admin'),
+    readSystem: requireRole('admin', 'super_admin'),
+    updateSystem: requireRole('super_admin'),
     updateUI: requireRole('admin', 'super_admin'),
   }));
   受保护路由器.use('/roles', createRoleRoutes(context.控制器.角色控制器));

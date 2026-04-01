@@ -1,4 +1,4 @@
-import 配置 from '../../config';
+import 配置 from '../../infra/config';
 import type { SettingsRepository } from './repository';
 import { 设置服务 } from './service';
 
@@ -112,5 +112,36 @@ describe('设置服务', () => {
       'ui.controlLayout',
       '{"right":{"x":4,"y":6}}',
     );
+  });
+
+  it('getSystemConfig 在未配置剪贴板开关时应默认禁用', async () => {
+    const repository = 创建设置仓库Mock();
+    repository.getSetting.mockResolvedValue(undefined);
+
+    const service = new 设置服务(repository);
+    const result = await service.getSystemConfig();
+
+    expect(result.allowSecretClipboardPaste).toBe(false);
+  });
+
+  it('getSystemConfig 应返回持久化的系统配置', async () => {
+    const repository = 创建设置仓库Mock();
+    repository.getSetting.mockResolvedValue('true');
+
+    const service = new 设置服务(repository);
+    const result = await service.getSystemConfig();
+
+    expect(result.allowSecretClipboardPaste).toBe(true);
+  });
+
+  it('updateSystemConfig 应持久化密钥剪贴板开关', async () => {
+    const repository = 创建设置仓库Mock();
+    const service = new 设置服务(repository);
+
+    await service.updateSystemConfig({
+      allowSecretClipboardPaste: true,
+    });
+
+    expect(repository.setSetting).toHaveBeenCalledWith('security.allowSecretClipboardPaste', 'true');
   });
 });

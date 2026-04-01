@@ -80,7 +80,8 @@ export const ROUTES = {
   OPERATION: '/operation', // 操作界面 (改成/operation/:uuid)
   PARAMS: '/params',       // 参数界面（指ws路径，后端路径，api等等）
   KNOWLEDGE_BASE: '/kb',   // 知识库  （到时候也要加uuid，这是指比如有分类垃圾的知识库，移动展厅的知识库等等）
-  SETTINGS: '/settings',   // 设置界面（配置，如深色模式等）
+  APP_SETTINGS: '/settings',        // 应用设置界面（本地偏好等）
+  SYSTEM_SETTINGS: '/system-settings', // 系统设置界面（主管理员）
 } as const
 
 // 存储键名（TODO:这里是储存在本地的用户数据，到时候可以考虑把显示语言设置等等存放到用户数据库中）

@@ -1,6 +1,8 @@
 import 配置 from '../../infra/config';
 import type { SettingsRepository } from './repository';
-import type { AIConfig, UIConfig } from './types';
+import type { AIConfig, SystemConfig, UIConfig } from './types';
+
+const 允许密钥剪贴板读取设置键 = 'security.allowSecretClipboardPaste';
 
 /**
  * 设置服务
@@ -115,6 +117,19 @@ export class 设置服务 {
   }
 
   /**
+   * 获取系统配置
+   */
+  async getSystemConfig(): Promise<SystemConfig> {
+    const allowSecretClipboardPaste = this.解析布尔设置(
+      await this.repository.getSetting(允许密钥剪贴板读取设置键),
+    );
+
+    return {
+      allowSecretClipboardPaste,
+    };
+  }
+
+  /**
    * 更新 UI 配置
    */
   async updateUIConfig(data: Partial<{
@@ -157,6 +172,24 @@ export class 设置服务 {
     await Promise.all(任务列表);
   }
 
+  /**
+   * 更新系统配置
+   */
+  async updateSystemConfig(data: Partial<{
+    allowSecretClipboardPaste: boolean;
+  }>): Promise<void> {
+    if (typeof data.allowSecretClipboardPaste !== 'boolean') {
+      return;
+    }
+
+    if (data.allowSecretClipboardPaste) {
+      await this.repository.setSetting(允许密钥剪贴板读取设置键, 'true');
+      return;
+    }
+
+    await this.repository.deleteSetting(允许密钥剪贴板读取设置键);
+  }
+
   private async 更新设置值(key: string, value: string): Promise<void> {
     if (value.length > 0) {
       await this.repository.setSetting(key, value);
@@ -176,6 +209,15 @@ export class 设置服务 {
       await this.repository.setSetting(dbKey, envValue);
     }
     return envValue;
+  }
+
+  private 解析布尔设置(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1';
   }
 }
 

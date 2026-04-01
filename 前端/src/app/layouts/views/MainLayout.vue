@@ -203,7 +203,7 @@ const menuGroups = computed<MenuGroup[]>(() => {
         { key: '/choreo', label: '编舞系统', icon: Film },
         { key: '/personal', label: '个人资料', icon: User },
         { key: '/sessions', label: '登录设备', icon: Monitor },
-        { key: '/settings', label: '系统设置', icon: Tools },
+        { key: '/settings', label: '应用设置', icon: Tools },
       ],
     },
   ]
@@ -219,6 +219,16 @@ const menuGroups = computed<MenuGroup[]>(() => {
         { key: '/kb', label: '知识库', icon: Collection },
         { key: '/feedback-manage', label: '反馈管理', icon: ChatDotRound },
         { key: '/users', label: '用户管理', icon: UserFilled },
+      ],
+    })
+  }
+
+  if (authStore.isSuperAdmin) {
+    groups.push({
+      key: 'super-admin',
+      title: '主管理员',
+      items: [
+        { key: '/system-settings', label: '系统设置', icon: Key },
       ],
     })
   }

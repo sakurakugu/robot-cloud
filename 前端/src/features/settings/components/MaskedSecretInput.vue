@@ -15,13 +15,14 @@
             @click="emit('toggle-visibility')"
           />
           <el-button
-            :icon="CopyDocument"
-            @click="emit('paste')"
-          />
-          <el-button
             v-if="readonly && hasValue"
             :icon="Edit"
             @click="emit('enable-edit')"
+          />
+          <el-button
+            :icon="CopyDocument"
+            :disabled="!clipboardPasteEnabled"
+            @click="emit('paste')"
           />
         </el-button-group>
       </template>
@@ -32,14 +33,17 @@
 <script setup lang="ts">
 import { CopyDocument, Edit, View } from '@element-plus/icons-vue'
 
-defineProps<{
+withDefaults(defineProps<{
   label: string
   modelValue: string
   readonly: boolean
   showValue: boolean
   placeholder: string
   hasValue: boolean
-}>()
+  clipboardPasteEnabled?: boolean
+}>(), {
+  clipboardPasteEnabled: false,
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]

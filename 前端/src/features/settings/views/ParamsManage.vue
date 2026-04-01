@@ -38,6 +38,7 @@
                   :show-value="provider.showValue"
                   :has-value="provider.hasValue"
                   :placeholder="provider.placeholder"
+                  :clipboard-paste-enabled="allowSecretClipboardPaste"
                   @update:model-value="updateProviderValue(provider.key, $event)"
                   @toggle-visibility="toggleVisibility(provider.key)"
                   @paste="pasteApiKey(provider.key)"
@@ -57,6 +58,7 @@
                 :show-value="field.showValue"
                 :has-value="field.hasValue"
                 :placeholder="field.placeholder"
+                :clipboard-paste-enabled="allowSecretClipboardPaste"
                 @update:model-value="updateXunfeiField(field.key, $event)"
                 @toggle-visibility="toggleXunfeiVisibility(field.key)"
                 @paste="pasteXunfeiField(field.key)"
@@ -93,7 +95,7 @@ import PageHeader from '@/share/components/PageHeader.vue'
 import { Select, Setting } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
-import { getAIConfig, getLLMConfig, updateAIConfig, updateLLMConfig } from '../api'
+import { getAIConfig, getLLMConfig, getSystemConfig, updateAIConfig, updateLLMConfig } from '../api'
 import MaskedSecretInput from '../components/MaskedSecretInput.vue'
 import {
   applyProviderSecretConfig,
@@ -127,6 +129,7 @@ const anthropicConfig = ref(createProviderSecretConfig())
 const deepseekConfig = ref(createProviderSecretConfig())
 const aliyunConfig = ref(createProviderSecretConfig())
 const xunfeiAsrConfig = ref(createXunfeiAsrSecretConfig())
+const allowSecretClipboardPaste = ref(false)
 
 const llmProviderSections = computed(() => [
   {
@@ -215,6 +218,11 @@ const llmConfigRefs = {
 } as const
 
 const applyClipboardValue = async (onText: (text: string) => void) => {
+  if (!allowSecretClipboardPaste.value) {
+    ElMessage.warning('系统设置已禁用密钥剪贴板读取')
+    return
+  }
+
   try {
     const text = await navigator.clipboard.readText()
     if (text) {
@@ -244,6 +252,14 @@ onMounted(async () => {
     applyXunfeiAsrSecretConfig(xunfeiAsrConfig.value, aiRes.data?.xunfeiAsr)
   } catch (error) {
     console.error('加载讯飞配置失败:', error)
+  }
+
+  try {
+    const systemRes = await getSystemConfig()
+    allowSecretClipboardPaste.value = !!systemRes.data?.allowSecretClipboardPaste
+  } catch (error) {
+    console.error('加载安全设置失败:', error)
+    allowSecretClipboardPaste.value = false
   }
 })
 

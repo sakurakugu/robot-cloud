@@ -80,6 +80,14 @@ export interface UpdateUIConfigDTO {
   controlLayout?: Record<string, { x: number; y: number }>
 }
 
+export interface SystemConfig {
+  allowSecretClipboardPaste: boolean
+}
+
+export interface UpdateSystemConfigDTO {
+  allowSecretClipboardPaste?: boolean
+}
+
 export type SystemHealthStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown'
 
 export interface SystemHealthComponentStatus {

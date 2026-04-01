@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <PageHeader
-      title="系统设置"
+      title="应用设置"
       :icon="Tools"
     />
 
@@ -119,7 +119,7 @@ import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 
 defineOptions({
-  name: 'SystemSettingsPage',
+  name: 'AppSettingsPage',
 })
 
 const formData = ref({})

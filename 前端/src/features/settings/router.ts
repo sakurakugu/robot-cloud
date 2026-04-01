@@ -48,8 +48,18 @@ export const systemRoutes: RouteRecordRaw[] = [
     name: 'Settings',
     component: () => import('@/features/settings/views/Settings.vue'),
     meta: {
-      title: '系统设置',
+      title: '应用设置',
       icon: 'Tools',
+    },
+  },
+  {
+    path: '/system-settings',
+    name: 'SystemSettings',
+    component: () => import('@/features/settings/views/SystemSettings.vue'),
+    meta: {
+      title: '系统设置',
+      icon: 'Key',
+      roles: ['super_admin'],
     },
   },
 ]

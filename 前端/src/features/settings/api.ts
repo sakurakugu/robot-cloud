@@ -16,10 +16,12 @@ import type {
     ReleaseChannel,
     RobotPackageInfo,
     SubmitFeedbackDTO,
+    SystemConfig,
     SystemStatus,
     UIConfig,
     UpdateAIConfigDTO,
     UpdateLLMConfigDTO,
+    UpdateSystemConfigDTO,
     UpdateUIConfigDTO,
 } from './types'
 
@@ -56,6 +58,20 @@ export function getAIConfig() {
  */
 export function updateAIConfig(data: UpdateAIConfigDTO) {
   return http.put<ApiResponse>('/api/v1/config/ai', data)
+}
+
+/**
+ * 获取系统配置
+ */
+export function getSystemConfig() {
+  return http.get<ApiResponse<SystemConfig>>('/api/v1/config/system')
+}
+
+/**
+ * 更新系统配置
+ */
+export function updateSystemConfig(data: UpdateSystemConfigDTO) {
+  return http.put<ApiResponse>('/api/v1/config/system', data)
 }
 
 /**
