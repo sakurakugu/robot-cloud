@@ -329,4 +329,50 @@ describe('AccountService', () => {
     }));
     expect(result.approvalStatus).toBe('approved');
   });
+
+  it('管理员查询用户列表时不应看到主管理员', async () => {
+    const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
+    repository.listUsers.mockResolvedValue([
+      {
+        ...创建用户('super_admin'),
+        id: 'super-1',
+        username: 'root',
+      },
+      {
+        ...创建用户('admin'),
+        id: 'admin-1',
+        username: 'manager',
+      },
+      {
+        ...创建用户('user'),
+        id: 'user-2',
+        username: 'member',
+      },
+    ]);
+
+    const service = new AccountService(repository, settingsRepository);
+    const result = await service.listManagedUsers('admin', {
+      page: 1,
+      page_size: 10,
+    });
+
+    expect(result.items.map((item) => item.username)).toEqual(['manager', 'member']);
+  });
+
+  it('管理员不能创建主管理员', async () => {
+    const repository = 创建仓库Mock();
+    const settingsRepository = 创建设置仓库Mock();
+    const service = new AccountService(repository, settingsRepository);
+
+    await expect(
+      service.createManagedUser('admin-1', 'admin', {
+        username: 'root2',
+        email: 'root2@example.com',
+        password: 'secret123',
+        role: 'super_admin',
+        is_active: true,
+      }),
+    ).rejects.toThrow('不能创建比自己权限更高的用户');
+  });
 });

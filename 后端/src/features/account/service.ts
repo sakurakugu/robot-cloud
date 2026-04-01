@@ -172,6 +172,30 @@ export class AccountService {
     return defaultValue;
   }
 
+  private 获取角色级别(role: AccountRole): number {
+    if (role === 'super_admin') {
+      return 3;
+    }
+    if (role === 'admin') {
+      return 2;
+    }
+    return 1;
+  }
+
+  private 是否可见目标角色(operatorRole: AccountRole, targetRole: AccountRole): boolean {
+    return this.获取角色级别(targetRole) <= this.获取角色级别(operatorRole);
+  }
+
+  private 是否可分配目标角色(operatorRole: AccountRole, targetRole: AccountRole): boolean {
+    return this.是否可见目标角色(operatorRole, targetRole);
+  }
+
+  private 断言具备用户管理权限(operatorRole: AccountRole): void {
+    if (!['admin', 'super_admin'].includes(operatorRole)) {
+      throw new Error('仅管理员可管理用户');
+    }
+  }
+
   private async 获取注册配置(): Promise<RegisterConfigView> {
     const settings = await this.settingsRepository.getSettings([
       注册开关设置键,
@@ -453,15 +477,32 @@ export class AccountService {
     return (await this.repository.listUsers()).map((user) => this.toSafeUser(user));
   }
 
-  async listManagedUsers(query: UserListQuery): Promise<UserListView> {
+  async listManagedUsers(operatorRole: AccountRole, query: UserListQuery): Promise<UserListView> {
+    this.断言具备用户管理权限(operatorRole);
     const { page, pageSize } = this.规范化分页参数(query);
     const keyword = String(query.keyword || '').trim().toLowerCase();
     const role = String(query.role || '').trim();
     const isActive = this.解析启用状态筛选(query.is_active);
     const approvalStatus = this.解析审核状态筛选(query.approval_status);
 
+    if (role) {
+      this.断言角色合法(role);
+      if (!this.是否可见目标角色(operatorRole, role)) {
+        return {
+          items: [],
+          total: 0,
+          page: 1,
+          page_size: pageSize,
+          pages: 1,
+        };
+      }
+    }
+
     const filteredUsers = (await this.repository.listUsers())
       .filter((user) => {
+        if (!this.是否可见目标角色(operatorRole, user.role)) {
+          return false;
+        }
         if (role && user.role !== role) {
           return false;
         }
@@ -509,13 +550,14 @@ export class AccountService {
     operatorRole: AccountRole,
     input: CreateManagedUserInput,
   ): Promise<SafeUser> {
-    if (operatorRole !== 'super_admin') {
-      throw new Error('仅主管理员可创建用户');
-    }
+    this.断言具备用户管理权限(operatorRole);
 
     const username = input.username.trim();
     const email = this.规范化邮箱(input.email);
     this.断言角色合法(String(input.role || ''));
+    if (!this.是否可分配目标角色(operatorRole, input.role)) {
+      throw new Error('不能创建比自己权限更高的用户');
+    }
     this.验证用户名(username);
     this.验证管理密码(input.password);
     this.断言邮箱合法(email);
@@ -562,13 +604,14 @@ export class AccountService {
     userId: string,
     input: UpdateManagedUserInput,
   ): Promise<SafeUser> {
-    if (operatorRole !== 'super_admin') {
-      throw new Error('仅主管理员可编辑用户');
-    }
+    this.断言具备用户管理权限(operatorRole);
 
     const username = input.username.trim();
     const email = this.规范化邮箱(input.email);
     this.断言角色合法(String(input.role || ''));
+    if (!this.是否可分配目标角色(operatorRole, input.role)) {
+      throw new Error('不能授予比自己权限更高的角色');
+    }
     this.验证用户名(username);
     this.断言邮箱合法(email);
 
@@ -578,6 +621,10 @@ export class AccountService {
       const user = await repository.getUserById(userId);
       if (!user) {
         throw new Error('用户不存在');
+      }
+
+      if (!this.是否可见目标角色(operatorRole, user.role)) {
+        throw new Error('不能管理比自己权限更高的用户');
       }
 
       if (user.id === operatorUserId && user.role !== input.role) {
@@ -632,14 +679,15 @@ export class AccountService {
     userId: string,
     password: string,
   ): Promise<void> {
-    if (operatorRole !== 'super_admin') {
-      throw new Error('仅主管理员可重置密码');
-    }
+    this.断言具备用户管理权限(operatorRole);
 
     this.验证管理密码(password);
     const user = await this.repository.getUserById(userId);
     if (!user) {
       throw new Error('用户不存在');
+    }
+    if (!this.是否可见目标角色(operatorRole, user.role)) {
+      throw new Error('不能管理比自己权限更高的用户');
     }
 
     await this.repository.updateUserPassword(userId, hashPassword(password));
@@ -651,9 +699,7 @@ export class AccountService {
     operatorRole: AccountRole,
     userId: string,
   ): Promise<void> {
-    if (operatorRole !== 'super_admin') {
-      throw new Error('仅主管理员可删除用户');
-    }
+    this.断言具备用户管理权限(operatorRole);
 
     if (operatorUserId === userId) {
       throw new Error('不能删除当前登录账号');
@@ -665,6 +711,10 @@ export class AccountService {
       const user = await repository.getUserById(userId);
       if (!user) {
         throw new Error('用户不存在');
+      }
+
+      if (!this.是否可见目标角色(operatorRole, user.role)) {
+        throw new Error('不能管理比自己权限更高的用户');
       }
 
       if (user.role === 'super_admin') {
@@ -708,9 +758,7 @@ export class AccountService {
     userId: string,
     status: RegistrationApprovalStatus,
   ): Promise<SafeUser> {
-    if (operatorRole !== 'super_admin') {
-      throw new Error('仅主管理员可审核注册');
-    }
+    this.断言具备用户管理权限(operatorRole);
 
     if (!['approved', 'rejected'].includes(status)) {
       throw new Error('审核状态无效');
@@ -722,6 +770,10 @@ export class AccountService {
       const user = await repository.getUserById(userId);
       if (!user) {
         throw new Error('用户不存在');
+      }
+
+      if (!this.是否可见目标角色(operatorRole, user.role)) {
+        throw new Error('不能管理比自己权限更高的用户');
       }
 
       if (user.approval_status === 'approved' && status === 'rejected') {
@@ -749,8 +801,9 @@ export class AccountService {
   }
 
   async updateUserRole(operatorRole: AccountRole, userId: string, role: AccountRole): Promise<SafeUser> {
-    if (operatorRole !== 'super_admin') {
-      throw new Error('仅主管理员可修改用户权限');
+    this.断言具备用户管理权限(operatorRole);
+    if (!this.是否可分配目标角色(operatorRole, role)) {
+      throw new Error('不能授予比自己权限更高的角色');
     }
 
     return this.repository.withTransaction(async (repository) => {
@@ -759,6 +812,10 @@ export class AccountService {
       const user = await repository.getUserById(userId);
       if (!user) {
         throw new Error('用户不存在');
+      }
+
+      if (!this.是否可见目标角色(operatorRole, user.role)) {
+        throw new Error('不能管理比自己权限更高的用户');
       }
 
       if (user.role === 'super_admin' && role !== 'super_admin') {

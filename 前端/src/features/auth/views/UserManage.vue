@@ -81,6 +81,7 @@ const allRoleOptions = [
 ]
 
 const canManageSuperAdmin = computed(() => auth.isSuperAdmin)
+const canManageRegisterPolicy = computed(() => auth.isSuperAdmin)
 const roleOptions = computed(() =>
   canManageSuperAdmin.value
     ? allRoleOptions
@@ -403,28 +404,82 @@ function handlePageSizeChange(nextPageSize: number) {
 }
 
 onMounted(() => {
-  fetchRegisterPolicy()
+  if (canManageRegisterPolicy.value) {
+    fetchRegisterPolicy()
+  }
   fetchUsers()
 })
 </script>
 
 <template>
   <div class="users-page">
-    <div class="users-head">
-      <PageHeader
-        title="用户管理"
-        :icon="UserFilled"
-      />
-      <el-button
-        type="primary"
-        :icon="Plus"
-        @click="showCreate = true"
-      >
-        新增用户
-      </el-button>
-    </div>
+    <PageHeader
+      title="用户管理"
+      :icon="UserFilled"
+    >
+      <template #extra>
+        <div class="header-actions">
+          <el-input
+            v-model="keyword"
+            placeholder="昵称 / 用户名 / 邮箱搜索"
+            clearable
+            style="width: 220px"
+            @keydown.enter="fetchUsers(true)"
+          />
+          <el-select
+            v-model="roleFilter"
+            style="width: 140px"
+          >
+            <el-option
+              v-for="item in roleFilterOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+          <el-select
+            v-model="activeFilter"
+            style="width: 120px"
+          >
+            <el-option
+              v-for="item in activeFilterOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+          <el-select
+            v-model="approvalFilter"
+            style="width: 120px"
+          >
+            <el-option
+              v-for="item in approvalFilterOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+          <el-button @click="fetchUsers(true)">
+            查询
+          </el-button>
+          <el-button
+            :icon="Refresh"
+            circle
+            @click="fetchUsers()"
+          />
+          <el-button
+            type="primary"
+            :icon="Plus"
+            @click="showCreate = true"
+          >
+            新增用户
+          </el-button>
+        </div>
+      </template>
+    </PageHeader>
 
     <el-card
+      v-if="canManageRegisterPolicy"
       class="policy-card"
       shadow="hover"
     >
@@ -466,62 +521,6 @@ onMounted(() => {
             @update:model-value="saveRegisterPolicy({ registerApprovalRequired: Boolean($event) })"
           />
         </div>
-      </div>
-    </el-card>
-
-    <el-card
-      class="filter-card"
-      shadow="hover"
-    >
-      <div class="filter-toolbar">
-        <el-input
-          v-model="keyword"
-          placeholder="昵称 / 用户名 / 邮箱搜索"
-          clearable
-          style="width: 220px"
-          @keydown.enter="fetchUsers(true)"
-        />
-        <el-select
-          v-model="roleFilter"
-          style="width: 140px"
-        >
-          <el-option
-            v-for="item in roleFilterOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
-        <el-select
-          v-model="activeFilter"
-          style="width: 120px"
-        >
-          <el-option
-            v-for="item in activeFilterOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
-        <el-select
-          v-model="approvalFilter"
-          style="width: 120px"
-        >
-          <el-option
-            v-for="item in approvalFilterOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
-        <el-button @click="fetchUsers(true)">
-          查询
-        </el-button>
-        <el-button
-          :icon="Refresh"
-          circle
-          @click="fetchUsers()"
-        />
       </div>
     </el-card>
 
@@ -840,16 +839,12 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.users-head {
+.header-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  gap: 12px;
-}
-
-.filter-card {
-  margin-bottom: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .policy-card {
@@ -894,13 +889,6 @@ onMounted(() => {
   font-size: 13px;
   line-height: 1.6;
   color: var(--el-text-color-secondary);
-}
-
-.filter-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .user-list {
@@ -984,12 +972,8 @@ onMounted(() => {
     padding: 16px;
   }
 
-  .users-head {
-    flex-direction: column;
-  }
-
-  .filter-toolbar {
-    align-items: stretch;
+  .header-actions {
+    justify-content: flex-start;
   }
 
   .policy-item {

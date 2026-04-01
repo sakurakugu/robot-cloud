@@ -12,7 +12,7 @@ import type { AccountRole, ClientType } from './types';
 
 const 账号权限错误映射: Http错误映射规则[] = [
   { 匹配: '不存在', 状态码: 404 },
-  { 匹配: [/权限/, /禁止/, /无权/], 状态码: 403 },
+  { 匹配: [/权限/, /禁止/, /无权/, /更高的用户/, /更高的角色/, /管理员可管理用户/], 状态码: 403 },
 ];
 
 const 注册错误映射: Http错误映射规则[] = [
@@ -132,8 +132,8 @@ export class AccountController {
   });
 
   listUsers = 处理控制器(async (req: Request) => {
-    this.获取当前用户(req);
-    return 返回数据(await this.accountService.listManagedUsers({
+    const user = this.获取当前用户(req);
+    return 返回数据(await this.accountService.listManagedUsers(user.role, {
       page: resolveQueryValue(req.query.page),
       page_size: resolveQueryValue(req.query.page_size),
       keyword: resolveQueryValue(req.query.keyword),
@@ -141,6 +141,9 @@ export class AccountController {
       is_active: resolveQueryValue(req.query.is_active),
       approval_status: resolveQueryValue(req.query.approval_status),
     }));
+  }, {
+    默认错误状态码: 400,
+    错误映射: 账号权限错误映射,
   });
 
   createUser = 处理控制器(async (req: Request) => {
@@ -186,6 +189,9 @@ export class AccountController {
   deleteUser = 处理控制器(async (req: Request) => {
     const user = this.获取当前用户(req);
     await this.accountService.deleteManagedUser(user.id, user.role, resolveParam(req.params.id));
+  }, {
+    默认错误状态码: 400,
+    错误映射: 账号权限错误映射,
   });
 
   reviewUserApproval = 处理控制器(async (req: Request) => {

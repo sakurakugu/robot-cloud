@@ -26,6 +26,6 @@ export const authLayoutRoutes: RouteRecordRaw[] = [
     path: '/users',
     name: 'UserManage',
     component: () => import('@/features/auth/views/UserManage.vue'),
-    meta: { title: '用户管理', requireAuth: true, roles: ['super_admin'], icon: 'UserFilled' },
+    meta: { title: '用户管理', requireAuth: true, roles: ['admin', 'super_admin'], icon: 'UserFilled' },
   },
 ]

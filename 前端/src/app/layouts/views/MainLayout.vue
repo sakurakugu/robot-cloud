@@ -218,15 +218,6 @@ const menuGroups = computed<MenuGroup[]>(() => {
         { key: '/update-manage', label: '更新管理', icon: UploadFilled },
         { key: '/kb', label: '知识库', icon: Collection },
         { key: '/feedback-manage', label: '反馈管理', icon: ChatDotRound },
-      ],
-    })
-  }
-
-  if (authStore.isSuperAdmin) {
-    groups.push({
-      key: 'super-admin',
-      title: '超级管理员',
-      items: [
         { key: '/users', label: '用户管理', icon: UserFilled },
       ],
     })
