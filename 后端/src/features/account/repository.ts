@@ -1,11 +1,22 @@
 import type { QueryResultRow } from 'pg';
 import type { 可事务数据库, 可查询数据库 } from '../../infra/db/client';
-import type { AccountRole, ClientType, UserRecord, UserSessionRecord } from './types';
+import type {
+  AccountRole,
+  ClientType,
+  UpdateManagedUserInput,
+  UserRecord,
+  UserSessionRecord,
+} from './types';
 
 type 创建用户输入 = {
   id: string;
   username: string;
   password_hash: string;
+  nickname: string | null;
+  email: string;
+  avatar_url: string | null;
+  bio: string | null;
+  is_active: boolean;
   role: AccountRole;
 };
 
@@ -34,15 +45,20 @@ export interface AccountRepository {
   createUser(data: 创建用户输入): Promise<void>;
   getUserById(id: string): Promise<UserRecord | undefined>;
   getUserByUsername(username: string): Promise<UserRecord | undefined>;
+  getUserByEmail(email: string): Promise<UserRecord | undefined>;
   listUsers(): Promise<UserRecord[]>;
   touchUserLogin(id: string): Promise<void>;
   updateUserRole(id: string, role: AccountRole): Promise<void>;
+  updateUser(id: string, data: UpdateManagedUserInput): Promise<void>;
+  updateUserPassword(id: string, passwordHash: string): Promise<void>;
+  deleteUser(id: string): Promise<void>;
   createUserSession(data: 创建会话输入): Promise<void>;
   getUserSessionById(id: string): Promise<UserSessionRecord | undefined>;
   getUserSessionByTokenHash(tokenHash: string): Promise<UserSessionRecord | undefined>;
   listUserSessions(userId: string): Promise<UserSessionRecord[]>;
   touchUserSession(id: string): Promise<void>;
   revokeUserSession(id: string): Promise<void>;
+  revokeUserSessionsByUserId(userId: string): Promise<void>;
 }
 
 export class PostgresAccountRepository implements AccountRepository {
@@ -79,9 +95,21 @@ export class PostgresAccountRepository implements AccountRepository {
 
   async createUser(data: 创建用户输入): Promise<void> {
     await this.database.query(
-      `INSERT INTO users (id, username, password_hash, role, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [data.id, data.username, data.password_hash, data.role],
+      `INSERT INTO users
+        (id, username, password_hash, nickname, email, avatar_url, bio, is_active, role, created_at, updated_at)
+       VALUES
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [
+        data.id,
+        data.username,
+        data.password_hash,
+        data.nickname,
+        data.email,
+        data.avatar_url,
+        data.bio,
+        data.is_active,
+        data.role,
+      ],
     );
   }
 
@@ -91,6 +119,10 @@ export class PostgresAccountRepository implements AccountRepository {
 
   getUserByUsername(username: string): Promise<UserRecord | undefined> {
     return this.queryOne<UserRecord>('SELECT * FROM users WHERE username = $1 LIMIT 1', [username]);
+  }
+
+  getUserByEmail(email: string): Promise<UserRecord | undefined> {
+    return this.queryOne<UserRecord>('SELECT * FROM users WHERE email = $1 LIMIT 1', [email]);
   }
 
   async listUsers(): Promise<UserRecord[]> {
@@ -116,6 +148,44 @@ export class PostgresAccountRepository implements AccountRepository {
        WHERE id = $2`,
       [role, id],
     );
+  }
+
+  async updateUser(id: string, data: UpdateManagedUserInput): Promise<void> {
+    await this.database.query(
+      `UPDATE users
+       SET username = $1,
+           nickname = $2,
+           email = $3,
+           avatar_url = $4,
+           bio = $5,
+           is_active = $6,
+           role = $7,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $8`,
+      [
+        data.username,
+        data.nickname ?? null,
+        data.email,
+        data.avatar_url ?? null,
+        data.bio ?? null,
+        data.is_active,
+        data.role,
+        id,
+      ],
+    );
+  }
+
+  async updateUserPassword(id: string, passwordHash: string): Promise<void> {
+    await this.database.query(
+      `UPDATE users
+       SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [passwordHash, id],
+    );
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await this.database.query('DELETE FROM users WHERE id = $1', [id]);
   }
 
   async createUserSession(data: 创建会话输入): Promise<void> {
@@ -175,6 +245,15 @@ export class PostgresAccountRepository implements AccountRepository {
        SET revoked_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND revoked_at IS NULL`,
       [id],
+    );
+  }
+
+  async revokeUserSessionsByUserId(userId: string): Promise<void> {
+    await this.database.query(
+      `UPDATE user_sessions
+       SET revoked_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1 AND revoked_at IS NULL`,
+      [userId],
     );
   }
 

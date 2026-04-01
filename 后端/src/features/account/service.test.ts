@@ -18,6 +18,11 @@ function 创建用户(role: AccountRole = 'user'): UserRecord {
     id: 'user-1',
     username: 'tester',
     password_hash: 'hash:secret123',
+    nickname: '测试用户',
+    email: 'tester@local.invalid',
+    avatar_url: null,
+    bio: null,
+    is_active: true,
     role,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -50,15 +55,20 @@ function 创建仓库Mock(): jest.Mocked<AccountRepository> {
     createUser: jest.fn(),
     getUserById: jest.fn(),
     getUserByUsername: jest.fn(),
+    getUserByEmail: jest.fn(),
     listUsers: jest.fn(),
     touchUserLogin: jest.fn(),
     updateUserRole: jest.fn(),
+    updateUser: jest.fn(),
+    updateUserPassword: jest.fn(),
+    deleteUser: jest.fn(),
     createUserSession: jest.fn(),
     getUserSessionById: jest.fn(),
     getUserSessionByTokenHash: jest.fn(),
     listUserSessions: jest.fn(),
     touchUserSession: jest.fn(),
     revokeUserSession: jest.fn(),
+    revokeUserSessionsByUserId: jest.fn(),
   };
 
   repository.withTransaction.mockImplementation(async (callback) => callback(repository));
@@ -89,6 +99,7 @@ describe('AccountService', () => {
         username: 'tester',
         role: 'super_admin',
         password_hash: 'hash:secret123',
+        email: 'tester@local.invalid',
       }),
     );
     expect(result.token).toBe('session-token');
@@ -136,5 +147,69 @@ describe('AccountService', () => {
     await expect(
       service.updateUserRole('super_admin', 'user-1', 'admin'),
     ).rejects.toThrow('至少保留一个主管理员');
+  });
+
+  it('主管理员应可创建管理用户', async () => {
+    const repository = 创建仓库Mock();
+    repository.getUserByUsername.mockResolvedValue(undefined);
+    repository.getUserByEmail.mockResolvedValue(undefined);
+    repository.getUserById.mockResolvedValue({
+      ...创建用户('admin'),
+      id: 'user-2',
+      username: 'manager',
+      email: 'manager@example.com',
+    });
+
+    const service = new AccountService(repository);
+    const result = await service.createManagedUser('super_admin', {
+      username: 'manager',
+      email: 'manager@example.com',
+      password: 'secret123',
+      role: 'admin',
+      is_active: true,
+    });
+
+    expect(repository.createUser).toHaveBeenCalledWith(expect.objectContaining({
+      username: 'manager',
+      email: 'manager@example.com',
+      role: 'admin',
+      is_active: true,
+    }));
+    expect(result.email).toBe('manager@example.com');
+  });
+
+  it('禁用用户时应撤销其会话', async () => {
+    const repository = 创建仓库Mock();
+    repository.getUserById.mockResolvedValue(创建用户('user'));
+    repository.getUserByUsername.mockResolvedValue(undefined);
+    repository.getUserByEmail.mockResolvedValue(undefined);
+    repository.countUsersByRole.mockResolvedValue(2);
+    repository.getUserById.mockResolvedValueOnce(创建用户('user'));
+    repository.getUserById.mockResolvedValueOnce({
+      ...创建用户('user'),
+      is_active: false,
+    });
+
+    const service = new AccountService(repository);
+    await service.updateManagedUser('super-1', 'super_admin', 'user-1', {
+      username: 'tester',
+      nickname: '测试用户',
+      email: 'tester@local.invalid',
+      role: 'user',
+      is_active: false,
+      bio: null,
+      avatar_url: null,
+    });
+
+    expect(repository.revokeUserSessionsByUserId).toHaveBeenCalledWith('user-1');
+  });
+
+  it('不能删除当前登录账号', async () => {
+    const repository = 创建仓库Mock();
+    const service = new AccountService(repository);
+
+    await expect(
+      service.deleteManagedUser('user-1', 'super_admin', 'user-1'),
+    ).rejects.toThrow('不能删除当前登录账号');
   });
 });

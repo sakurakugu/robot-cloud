@@ -227,7 +227,7 @@ const menuGroups = computed<MenuGroup[]>(() => {
       key: 'super-admin',
       title: '超级管理员',
       items: [
-        { key: '/users', label: '用户权限', icon: UserFilled },
+        { key: '/users', label: '用户管理', icon: UserFilled },
       ],
     })
   }

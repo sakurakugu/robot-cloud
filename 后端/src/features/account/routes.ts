@@ -16,7 +16,11 @@ export function createAccountRoutes(controller: AccountController): Router {
   router.get('/sessions', requireAuth, controller.listSessions);
   router.delete('/sessions/:id', requireAuth, controller.revokeSession);
 
-  router.get('/users', requireRole('admin', 'super_admin'), controller.listUsers);
+  router.get('/users', requireRole('super_admin'), controller.listUsers);
+  router.post('/users', requireRole('super_admin'), controller.createUser);
+  router.patch('/users/:id', requireRole('super_admin'), controller.updateUser);
+  router.patch('/users/:id/password', requireRole('super_admin'), controller.resetUserPassword);
+  router.delete('/users/:id', requireRole('super_admin'), controller.deleteUser);
   router.put('/users/:id/role', requireRole('super_admin'), controller.updateRole);
 
   return router;

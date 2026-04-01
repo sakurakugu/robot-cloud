@@ -48,6 +48,13 @@ function resolveParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? String(value[0] || '') : String(value || '');
 }
 
+function resolveQueryValue(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    return typeof value[0] === 'string' ? value[0] : undefined;
+  }
+  return typeof value === 'string' ? value : undefined;
+}
+
 export class AccountController {
   constructor(private accountService: AccountService) {}
 
@@ -110,7 +117,50 @@ export class AccountController {
 
   listUsers = 处理控制器(async (req: Request) => {
     this.获取当前用户(req);
-    return 返回数据(await this.accountService.listUsers());
+    return 返回数据(await this.accountService.listManagedUsers({
+      page: resolveQueryValue(req.query.page),
+      page_size: resolveQueryValue(req.query.page_size),
+      keyword: resolveQueryValue(req.query.keyword),
+      role: resolveQueryValue(req.query.role),
+      is_active: resolveQueryValue(req.query.is_active),
+    }));
+  });
+
+  createUser = 处理控制器(async (req: Request) => {
+    const user = this.获取当前用户(req);
+    return 返回数据(await this.accountService.createManagedUser(user.role, req.body || {}), {
+      状态码: 201,
+    });
+  }, {
+    默认错误状态码: 400,
+    错误映射: 账号权限错误映射,
+  });
+
+  updateUser = 处理控制器(async (req: Request) => {
+    const user = this.获取当前用户(req);
+    return 返回数据(await this.accountService.updateManagedUser(
+      user.id,
+      user.role,
+      resolveParam(req.params.id),
+      req.body || {},
+    ));
+  }, {
+    默认错误状态码: 400,
+    错误映射: 账号权限错误映射,
+  });
+
+  resetUserPassword = 处理控制器(async (req: Request) => {
+    const user = this.获取当前用户(req);
+    const password = String(req.body?.password || '');
+    await this.accountService.resetUserPassword(user.role, resolveParam(req.params.id), password);
+  }, {
+    默认错误状态码: 400,
+    错误映射: 账号权限错误映射,
+  });
+
+  deleteUser = 处理控制器(async (req: Request) => {
+    const user = this.获取当前用户(req);
+    await this.accountService.deleteManagedUser(user.id, user.role, resolveParam(req.params.id));
   });
 
   updateRole = 处理控制器(async (req: Request) => {

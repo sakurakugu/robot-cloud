@@ -1,5 +1,14 @@
 import { http } from '@/share/api/http';
-import type { ApiResp, AuthPayload, AuthUser, LoginSession } from './types';
+import type {
+  ApiResp,
+  AuthPayload,
+  AuthUser,
+  LoginSession,
+  UserCreatePayload,
+  UserListQuery,
+  UserListResult,
+  UserUpdatePayload,
+} from './types';
 
 export function registerAccount(payload: { username: string; password: string }) {
   return http.post<ApiResp<AuthPayload>>('/api/v1/auth/register', payload, {
@@ -35,8 +44,26 @@ export function revokeSession(id: string) {
   return http.delete<ApiResp<{ success: boolean }>>(`/api/v1/auth/sessions/${id}`)
 }
 
-export function getUsers() {
-  return http.get<ApiResp<AuthUser[]>>('/api/v1/auth/users')
+export function getUsers(query: UserListQuery) {
+  return http.get<ApiResp<UserListResult>>('/api/v1/auth/users', {
+    params: query,
+  })
+}
+
+export function createUser(payload: UserCreatePayload) {
+  return http.post<ApiResp<AuthUser>>('/api/v1/auth/users', payload)
+}
+
+export function updateUser(id: string, payload: UserUpdatePayload) {
+  return http.patch<ApiResp<AuthUser>>(`/api/v1/auth/users/${id}`, payload)
+}
+
+export function resetUserPassword(id: string, password: string) {
+  return http.patch<ApiResp<{ success: boolean }>>(`/api/v1/auth/users/${id}/password`, { password })
+}
+
+export function deleteUser(id: string) {
+  return http.delete<ApiResp<{ success: boolean }>>(`/api/v1/auth/users/${id}`)
 }
 
 export function updateUserRole(id: string, role: 'user' | 'admin' | 'super_admin') {
