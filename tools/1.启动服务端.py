@@ -84,6 +84,44 @@ def 查找命令(name: str) -> None:
         raise RuntimeError(f"未找到命令: {name}")
 
 
+def 确保_git_hooks_已启用() -> None:
+    """检查并启用 git hooks。"""
+    # 检查 .githooks 目录是否存在
+    githooks_dir = ROOT_DIR / ".githooks"
+    if not githooks_dir.exists():
+        return
+
+    # 获取当前 hooks 路径
+    result = subprocess.run(
+        ["git", "config", "core.hooksPath"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT_DIR,
+    )
+    current_path = result.stdout.strip() if result.returncode == 0 else ""
+
+    # 如果已经设置为 .githooks，则跳过
+    if current_path == ".githooks":
+        return
+
+    echo("启用 git hooks")
+    subprocess.run(
+        ["git", "config", "core.hooksPath", ".githooks"],
+        check=True,
+        cwd=ROOT_DIR,
+    )
+
+    # 非 Windows 系统需要添加执行权限
+    if os.name != "nt":
+        for hook_file in githooks_dir.iterdir():
+            if hook_file.is_file():
+                subprocess.run(
+                    ["chmod", "+x", str(hook_file)],
+                    check=False,
+                    cwd=ROOT_DIR,
+                )
+
+
 def 解析_dotenv(path: Path) -> dict[str, str]:
     data: dict[str, str] = {}
     if not path.exists():
@@ -232,7 +270,7 @@ def 确保_node_依赖(directory: Path, *, 名称: str, 哈希键: str) -> None:
     保存依赖哈希(哈希键, current_hash)
     echo(f"{名称}依赖安装完成")
 
-
+            
 def 存在进程(pid: int) -> bool:
     if pid <= 0:
         return False
@@ -595,6 +633,8 @@ def 启动开发版() -> None:
     查找命令("docker")
     查找命令(sys.executable)
     npm_cmd = 解析_npm_命令()
+
+    确保_git_hooks_已启用()
 
     echo("检查 Docker 状态")
     检查_docker_运行()
