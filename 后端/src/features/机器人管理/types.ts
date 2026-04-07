@@ -7,12 +7,28 @@ export type 机器人状态 = 'online' | 'offline' | 'error';
 
 export type 音频路由模式 = 'robot' | 'phone' | 'mute';
 export type 音频路由回退策略 = 'drop' | 'robot';
+export type 视频会话模式 = 'local' | 'cloud' | 'unavailable';
+export type 视频会话协议 = 'whep' | 'hls' | 'none';
+export type 视频来源 = 'robot' | 'cloud' | 'none';
 
 export interface 音频路由配置 {
   mode: 音频路由模式;
   targetPhoneDeviceId: string | null;
   fallback: 音频路由回退策略;
   updatedAt: string;
+}
+
+export interface 机器人视频会话 {
+  available: boolean;
+  mode: 视频会话模式;
+  source: 视频来源;
+  preferredProtocol: 视频会话协议;
+  robotIp: string | null;
+  whepUrl: string | null;
+  hlsUrl: string | null;
+  requiresSameLan: boolean;
+  message: string;
+  expiresAt: string;
 }
 
 // ============ 数据库实体 ============

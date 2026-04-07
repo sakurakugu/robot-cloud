@@ -125,6 +125,17 @@ export class 机器人控制器 {
   });
 
   /**
+   * 创建机器人视频会话
+   */
+  createVideoSession = 处理控制器(async (req: Request) => {
+    const uuid = this.获取参数(req, 'uuid');
+    const session = await this.机器人服务.获取视频会话(uuid);
+    return 返回数据(session);
+  }, {
+    错误映射: 机器人参数错误映射,
+  });
+
+  /**
    * 更新机器人固件（推送安装包）
    */
   updateFirmware = 处理控制器(async (req: Request) => {

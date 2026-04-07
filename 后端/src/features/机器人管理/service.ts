@@ -11,7 +11,14 @@ import type {
 import { formatTimestamp } from '../../shared/utils/datetime';
 import type { 机器人包服务 } from '../机器人包管理/service';
 import type { RobotRepository } from './repository';
-import type { CreateRobotDto, RobotRecord, RobotResponse, UpdateRobotDto, 音频路由配置 } from './types';
+import type {
+  CreateRobotDto,
+  RobotRecord,
+  RobotResponse,
+  UpdateRobotDto,
+  机器人视频会话,
+  音频路由配置,
+} from './types';
 
 const 默认音频路由配置: 音频路由配置 = {
   mode: 'robot',
@@ -351,6 +358,50 @@ export class 机器人服务 {
       throw new Error('更新状态失败');
     }
     return result;
+  }
+
+  /**
+   * 获取机器人视频会话
+   */
+  async 获取视频会话(uuid: string): Promise<机器人视频会话> {
+    const robot = await this.获取机器人记录(uuid);
+    if (!robot) {
+      throw new Error('机器人不存在');
+    }
+
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+    if (!robot.ip) {
+      return {
+        available: false,
+        mode: 'unavailable',
+        source: 'none',
+        preferredProtocol: 'none',
+        robotIp: null,
+        whepUrl: null,
+        hlsUrl: null,
+        requiresSameLan: false,
+        message: '缺少机器人IP，暂时无法生成视频会话',
+        expiresAt,
+      };
+    }
+
+    const 离线提示 = robot.status === 'online'
+      ? ''
+      : '；机器人当前在云端显示离线，如需播放请确认浏览器与机器狗仍处于同一局域网';
+
+    return {
+      available: true,
+      mode: 'local',
+      source: 'robot',
+      preferredProtocol: 'whep',
+      robotIp: robot.ip,
+      whepUrl: `http://${robot.ip}:8889/test/whep`,
+      hlsUrl: null,
+      requiresSameLan: true,
+      message: `当前仅返回机器狗本体直连视频地址，云端视频暂未接入${离线提示}`,
+      expiresAt,
+    };
   }
 
   /**

@@ -87,7 +87,6 @@
           v-model="showVideo"
           active-text="视频"
           inline-prompt
-          @change="toggleVideo"
         />
 
         <el-divider direction="vertical" />
@@ -163,14 +162,50 @@
 
     <!-- Middle Video Area -->
     <div class="video-area">
-      <div class="video-placeholder">
+      <WhepVideoPlayer
+        v-if="activeWhepUrl"
+        :key="videoPlayerKey"
+        :whep-url="activeWhepUrl"
+      />
+
+      <div
+        v-else
+        class="video-placeholder"
+      >
         <el-icon
           :size="60"
           color="#909399"
         >
           <VideoCamera />
         </el-icon>
-        <p>{{ showVideo ? '等待视频信号...' : '视频已关闭' }}</p>
+        <p>{{ videoPlaceholderTitle }}</p>
+        <p
+          v-if="videoPlaceholderDetail"
+          class="video-placeholder__detail"
+        >
+          {{ videoPlaceholderDetail }}
+        </p>
+        <p
+          v-if="videoSession?.whepUrl"
+          class="video-placeholder__url"
+        >
+          {{ videoSession.whepUrl }}
+        </p>
+        <el-button
+          v-if="showVideo && selectedUuid"
+          size="small"
+          text
+          @click="retryVideoSession"
+        >
+          重新请求视频
+        </el-button>
+      </div>
+
+      <div
+        v-if="showVideo && videoSession"
+        class="video-badge"
+      >
+        {{ videoBadgeText }}
       </div>
 
       <!-- Floating Controls Layer -->
@@ -279,6 +314,7 @@
 <script setup lang="ts">
 import ChatView from '@/features/conversation/views/ChatView.vue'
 import ActionButton from '@/features/robot/components/ActionButton.vue'
+import WhepVideoPlayer from '@/features/robot/components/WhepVideoPlayer.vue'
 import { useRobotOperationJoystick } from '@/features/robot/composables/useRobotOperationJoystick'
 import {
   defaultRobotOperationControlLayout,
@@ -299,9 +335,10 @@ import {
 import { ElMessage } from 'element-plus'
 import { Bot, Mic, MicOff } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { capturePhoto } from '../api'
+import { capturePhoto, createRobotVideoSession } from '../api'
+import type { RobotVideoSession } from '../types'
 import { useRobotStore } from '../store'
 
 const props = defineProps<{ embedded?: boolean; robotUuid?: string }>()
@@ -330,12 +367,17 @@ const showChatPanel = ref(false)
 const floatingLayerRef = ref<HTMLDivElement | null>(null)
 const micEnabled = ref(true)
 const isCapturing = ref(false)
+const videoLoading = ref(false)
+const videoSession = ref<RobotVideoSession | null>(null)
+const videoError = ref('')
+const videoPlayerVersion = ref(0)
 const sdkMode = ref(true) // SDK模式开关，默认开启
 const sdkModeLoading = ref(false) // SDK模式切换加载状态
 /** 切换前的开关状态，切换失败时回滚用 */
 const sdkModePrevValue = ref(true)
 /** 超时保护计时器，避免开关永久卡住 */
 let sdkModeSwitchTimeout: ReturnType<typeof setTimeout> | null = null
+let videoRequestToken = 0
 
 const {
   layoutEditMode,
@@ -377,6 +419,42 @@ const actionButtons = [
 // Timer for clock
 let timeInterval: any = null
 
+const activeWhepUrl = computed(() => {
+  if (!showVideo.value || !videoSession.value?.available) return ''
+  if (videoSession.value.preferredProtocol !== 'whep') return ''
+  return videoSession.value.whepUrl || ''
+})
+
+const videoPlayerKey = computed(() => `${selectedUuid.value}-${videoPlayerVersion.value}`)
+
+const videoPlaceholderTitle = computed(() => {
+  if (!showVideo.value) return '视频已关闭'
+  if (!selectedUuid.value) return '请先选择机器人'
+  if (videoLoading.value) return '正在请求视频会话...'
+  if (videoError.value) return '获取视频会话失败'
+  if (!videoSession.value) return '等待视频会话...'
+  if (!videoSession.value.available) return '当前暂无可用视频'
+  if (!activeWhepUrl.value) return '当前视频会话暂未提供可播放的视频地址'
+  return '等待视频信号...'
+})
+
+const videoPlaceholderDetail = computed(() => {
+  if (videoError.value) return videoError.value
+  if (videoSession.value?.message) return videoSession.value.message
+  return ''
+})
+
+const videoBadgeText = computed(() => {
+  if (!videoSession.value) return ''
+  if (videoSession.value.mode === 'local') {
+    return '本地直连 WHEP'
+  }
+  if (videoSession.value.mode === 'cloud') {
+    return '云端视频'
+  }
+  return '无可用视频'
+})
+
 // Functions
 const goBack = () => {
   router.back()
@@ -399,18 +477,6 @@ const emergencyStop = () => {
     timestamp: Date.now(),
     data: { command: 'estop' },
   })
-}
-
-const toggleVideo = (val: boolean) => {
-  if (val) {
-    if (isConnected.value) {
-      wsSendMessage({ type: 'video_subscribe' })
-    }
-  } else {
-    if (isConnected.value) {
-      wsSendMessage({ type: 'video_unsubscribe' })
-    }
-  }
 }
 
 const openChatPanel = () => {
@@ -546,6 +612,40 @@ const openSettings = () => {
   router.push({ path: '/operation/edit', query: { robotUuid: selectedUuid.value, tab: 'basic' } })
 }
 
+const clearVideoSession = () => {
+  videoRequestToken += 1
+  videoLoading.value = false
+  videoSession.value = null
+  videoError.value = ''
+  videoPlayerVersion.value += 1
+}
+
+const loadVideoSession = async (uuid: string) => {
+  const requestToken = ++videoRequestToken
+  videoLoading.value = true
+  videoSession.value = null
+  videoError.value = ''
+
+  try {
+    const res = await createRobotVideoSession(uuid)
+    if (requestToken !== videoRequestToken) return
+    videoSession.value = res.data
+    videoPlayerVersion.value += 1
+  } catch (error: any) {
+    if (requestToken !== videoRequestToken) return
+    videoError.value = error?.message || '请求视频会话失败'
+  } finally {
+    if (requestToken === videoRequestToken) {
+      videoLoading.value = false
+    }
+  }
+}
+
+const retryVideoSession = () => {
+  if (!showVideo.value || !selectedUuid.value) return
+  void loadVideoSession(selectedUuid.value)
+}
+
 
 // Fetch robots
 const fetchRobots = async () => {
@@ -621,6 +721,14 @@ watch(selectedUuid, async (val) => {
     }
   }
 })
+
+watch([selectedUuid, showVideo], ([uuid, videoEnabled]) => {
+  if (!uuid || !videoEnabled) {
+    clearVideoSession()
+    return
+  }
+  void loadVideoSession(uuid)
+}, { immediate: true })
 
 watch(
   () => props.robotUuid,
@@ -736,7 +844,39 @@ html, body, #app {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 8px;
+  max-width: 560px;
+  padding: 24px;
   color: #909399;
+  text-align: center;
+}
+
+.video-placeholder__detail {
+  margin: 0;
+  color: #c7d2e5;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.video-placeholder__url {
+  margin: 0;
+  color: #6f809f;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.video-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 3;
+  padding: 6px 10px;
+  border: 1px solid rgba(143, 162, 199, 0.35);
+  border-radius: 999px;
+  background: rgba(7, 12, 22, 0.72);
+  color: #dce7ff;
+  font-size: 12px;
+  letter-spacing: 0.02em;
 }
 
 .floating-layer {

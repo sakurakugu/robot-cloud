@@ -17,6 +17,7 @@ export function createRobotRoutes(controller: 机器人控制器): Router {
   // 连接管理
   // router.post('/:uuid/test-connection', controller.testConnection);
   // router.post('/:uuid/connect', controller.connectRobot);
+  router.post('/:uuid/video/session', controller.createVideoSession);
   router.post('/:uuid/update-firmware', controller.updateFirmware);
 
   // 日志标记

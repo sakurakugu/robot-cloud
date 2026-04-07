@@ -9,6 +9,7 @@ import type {
     RobotGroupsResponse,
     RobotListResponse,
     RobotResponse,
+    RobotVideoSessionResponse,
     RobotVolumeResponse,
     UpdateRobotDTO
 } from './types'
@@ -125,6 +126,13 @@ export function setRobotMute(uuid: string, mute: boolean) {
  */
 export function capturePhoto(uuid: string) {
   return http.post<{ success: boolean; data: { image: string; format: string } }>(`/api/v1/robots/${uuid}/camera/capture`)
+}
+
+/**
+ * 创建视频会话
+ */
+export function createRobotVideoSession(uuid: string) {
+  return http.post<RobotVideoSessionResponse>(`/api/v1/robots/${uuid}/video/session`)
 }
 
 /**
