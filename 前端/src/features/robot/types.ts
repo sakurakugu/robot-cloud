@@ -112,7 +112,7 @@ export interface LocalIpResponse {
 }
 
 export type RobotVideoSessionMode = 'cloud' | 'unavailable'
-export type RobotVideoSessionProtocol = 'hls' | 'frame' | 'none'
+export type RobotVideoSessionProtocol = 'whep' | 'none'
 export type RobotVideoSessionSource = 'cloud' | 'none'
 
 export interface RobotVideoSession {
@@ -121,7 +121,7 @@ export interface RobotVideoSession {
   source: RobotVideoSessionSource
   preferredProtocol: RobotVideoSessionProtocol
   robotIp: string | null
-  hlsUrl: string | null
+  whepUrl: string | null
   message: string
   expiresAt: string
 }

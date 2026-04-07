@@ -1,7 +1,7 @@
 """跨平台云端服务启动器。
 
-start:      docker 数据库 + 后端/前端热重载
-stop:       停止后端/前端 + docker 数据库
+start:      docker 开发依赖（postgres / mediamtx / coturn）+ 后端/前端热重载
+stop:       停止后端/前端 + docker 开发依赖
 restart:    停止后启动
 status:     显示本地进程和 docker 状态
 db-upgrade: 更新数据库到最新迁移
@@ -38,6 +38,7 @@ ANSI_RESET = "\033[0m"
 ANSI_GREEN = "\033[32m"
 ANSI_YELLOW = "\033[33m"
 ANSI_RED = "\033[31m"
+开发版_DOCKER_服务 = ["postgres", "mediamtx", "coturn"]
 
 
 def echo(msg: str) -> None:
@@ -171,6 +172,15 @@ def 读取根环境变量() -> dict[str, str]:
     if env_file is None:
         return {}
     return 解析_dotenv(env_file)
+
+
+def 构建开发_docker_环境() -> dict[str, str]:
+    env = os.environ.copy()
+    env.setdefault("MEDIA_PUBLIC_HOST", "127.0.0.1")
+    env.setdefault("MEDIA_TURN_DOMAIN", "127.0.0.1")
+    env.setdefault("MEDIA_TURN_EXTERNAL_IP", "127.0.0.1")
+    env.setdefault("MEDIA_WHEP_HTTP_PORT", "8889")
+    return env
 
 
 def 读取状态() -> Optional[dict]:
@@ -575,11 +585,12 @@ def 更新开发数据库() -> None:
     确保_node_依赖(BACKEND_DIR, 名称="后端", 哈希键="backend_package")
     检查_docker_运行()
 
-    echo("启动数据库依赖")
+    echo("启动开发依赖容器")
     subprocess.run(
-        ["docker", "compose", *组合_env_参数(), "up", "-d", "postgres"],
+        ["docker", "compose", *组合_env_参数(), "up", "-d", *开发版_DOCKER_服务],
         check=True,
         cwd=ROOT_DIR,
+        env=构建开发_docker_环境(),
     )
 
     env = os.environ.copy()
@@ -641,11 +652,12 @@ def 启动开发版() -> None:
     确保_env_文件()
     验证_docker_compose_镜像(ROOT_DIR / "docker-compose.yml")
 
-    echo("启动开发数据库: postgres")
+    echo(f"启动开发依赖容器: {', '.join(开发版_DOCKER_服务)}")
     subprocess.run(
-        ["docker", "compose", *组合_env_参数(), "up", "-d", "postgres"],
+        ["docker", "compose", *组合_env_参数(), "up", "-d", *开发版_DOCKER_服务],
         check=True,
         cwd=ROOT_DIR,
+        env=构建开发_docker_环境(),
     )
 
     echo("停止本地开发进程")
@@ -681,6 +693,7 @@ def 启动开发版() -> None:
     print("本地开发环境已启动:")
     print("  前端: http://localhost:5174/")
     print("  后端: http://localhost:9000/api/v1/health")
+    print("  媒体代理: http://localhost:5174/media/")
     print(f"  后端日志: {BACKEND_LOG}")
     print(f"  前端日志: {FRONTEND_LOG}")
     print("")
@@ -719,14 +732,15 @@ def 停止开发版() -> None:
     停止开发版进程()
 
     if shutil.which("docker") is None or not docker_是否运行():
-        echo("Docker 未运行，跳过停止数据库容器")
+        echo("Docker 未运行，跳过停止开发依赖容器")
         return
 
-    echo("正在停止数据库容器")
+    echo("正在停止开发依赖容器")
     subprocess.run(
-        ["docker", "compose", *组合_env_参数(), "stop", "postgres"],
+        ["docker", "compose", *组合_env_参数(), "stop", *开发版_DOCKER_服务],
         check=False,
         cwd=ROOT_DIR,
+        env=构建开发_docker_环境(),
     )
 
 
@@ -739,9 +753,10 @@ def 显示开发状态() -> None:
         print("Docker 未运行")
     else:
         subprocess.run(
-            ["docker", "compose", *组合_env_参数(), "ps", "postgres"],
+            ["docker", "compose", *组合_env_参数(), "ps", *开发版_DOCKER_服务],
             check=False,
             cwd=ROOT_DIR,
+            env=构建开发_docker_环境(),
         )
 
     state = 读取状态()

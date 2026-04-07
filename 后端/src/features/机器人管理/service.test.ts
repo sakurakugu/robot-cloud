@@ -278,12 +278,12 @@ describe('机器人服务', () => {
       source: 'none',
       preferredProtocol: 'none',
       robotIp: null,
-      hlsUrl: null,
+      whepUrl: null,
     }));
-    expect(result.message).toContain('缺少机器人IP');
+    expect(result.message).toContain('离线');
   });
 
-  it('获取视频会话 在机器人在线时应返回云端帧流', async () => {
+  it('获取视频会话 在机器人在线时应返回云端 WHEP 地址', async () => {
     const repository = 创建机器人仓库Mock();
     repository.getRobot.mockResolvedValue(创建机器人记录({
       ip: '192.168.1.88',
@@ -298,11 +298,11 @@ describe('机器人服务', () => {
       available: true,
       mode: 'cloud',
       source: 'cloud',
-      preferredProtocol: 'frame',
+      preferredProtocol: 'whep',
       robotIp: '192.168.1.88',
-      hlsUrl: null,
+      whepUrl: '/media/robots/robot-1/whep',
     }));
-    expect(result.message).toContain('云端业务 WebSocket');
+    expect(result.message).toContain('MediaMTX');
     expect(result.expiresAt).toMatch(/^20\d{2}-\d{2}-\d{2}T/);
   });
 
@@ -323,9 +323,9 @@ describe('机器人服务', () => {
       source: 'none',
       preferredProtocol: 'none',
       robotIp: '192.168.1.88',
-      hlsUrl: null,
+      whepUrl: null,
     }));
-    expect(result.message).toContain('已禁用本地 WHEP 直连');
+    expect(result.message).toContain('离线');
     expect(result.expiresAt).toMatch(/^20\d{2}-\d{2}-\d{2}T/);
   });
 

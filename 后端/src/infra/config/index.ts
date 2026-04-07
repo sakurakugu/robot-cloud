@@ -71,6 +71,12 @@ export interface 配置 {
     level: string;
     dir: string;
   };
+
+  // 媒体配置
+  media: {
+    streamPathPrefix: string;
+    whepBaseUrl: string;
+  };
 }
 
 /**
@@ -163,6 +169,11 @@ const 配置: 配置 = {
   logging: {
     level: process.env.LOG_LEVEL || 'info',
     dir: process.env.LOG_DIR || path.join(__dirname, '../../data/logs'),
+  },
+
+  media: {
+    streamPathPrefix: process.env.MEDIA_STREAM_PATH_PREFIX || 'robots',
+    whepBaseUrl: process.env.MEDIA_WHEP_BASE_URL || '/media',
   },
 };
 

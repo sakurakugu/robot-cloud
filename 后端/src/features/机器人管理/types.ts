@@ -8,7 +8,7 @@ export type 机器人状态 = 'online' | 'offline' | 'error';
 export type 音频路由模式 = 'robot' | 'phone' | 'mute';
 export type 音频路由回退策略 = 'drop' | 'robot';
 export type 视频会话模式 = 'cloud' | 'unavailable';
-export type 视频会话协议 = 'hls' | 'frame' | 'none';
+export type 视频会话协议 = 'whep' | 'none';
 export type 视频来源 = 'cloud' | 'none';
 
 export interface 音频路由配置 {
@@ -24,7 +24,7 @@ export interface 机器人视频会话 {
   source: 视频来源;
   preferredProtocol: 视频会话协议;
   robotIp: string | null;
-  hlsUrl: string | null;
+  whepUrl: string | null;
   message: string;
   expiresAt: string;
 }

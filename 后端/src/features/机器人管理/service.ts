@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import net from 'net';
 import path from 'path';
 import { v7 as uuidv7, validate as validUUID } from 'uuid';
+import 配置 from '../../infra/config';
 import { logger } from '../../infra/logger';
 import type {
   机器人命令服务接口,
@@ -88,6 +89,19 @@ export class 机器人服务 {
       throw new Error('机器人命令服务未初始化');
     }
     return this.机器人命令服务;
+  }
+
+  private 构建云端WHEP地址(uuid: string): string {
+    const 基础地址 = (配置.media.whepBaseUrl || '/media').trim() || '/media';
+    const 流路径前缀 = (配置.media.streamPathPrefix || 'robots')
+      .split('/')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join('/');
+    const 标准化基础地址 = 基础地址.endsWith('/') ? 基础地址.slice(0, -1) : 基础地址;
+    const 编码机器人ID = encodeURIComponent(uuid);
+
+    return `${标准化基础地址}/${流路径前缀}/${编码机器人ID}/whep`;
   }
 
   /**
@@ -371,28 +385,15 @@ export class 机器人服务 {
 
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-    if (!robot.ip) {
-      return {
-        available: false,
-        mode: 'unavailable',
-        source: 'none',
-        preferredProtocol: 'none',
-        robotIp: null,
-        hlsUrl: null,
-        message: '缺少机器人IP，暂时无法生成视频会话',
-        expiresAt,
-      };
-    }
-
     if (robot.status === 'online') {
       return {
         available: true,
         mode: 'cloud',
         source: 'cloud',
-        preferredProtocol: 'frame',
+        preferredProtocol: 'whep',
         robotIp: robot.ip,
-        hlsUrl: null,
-        message: '当前通过云端业务 WebSocket 转发 JPEG 帧流，无需与机器狗处于同一局域网',
+        whepUrl: this.构建云端WHEP地址(robot.uuid),
+        message: '当前通过云端 MediaMTX / WHEP 拉流，无需与机器狗处于同一局域网',
         expiresAt,
       };
     }
@@ -403,8 +404,8 @@ export class 机器人服务 {
       source: 'none',
       preferredProtocol: 'none',
       robotIp: robot.ip,
-      hlsUrl: null,
-      message: '机器人当前离线，请等待机器人重新上线后再观看视频',
+      whepUrl: null,
+      message: '机器人当前离线，请等待机器人重新上线后再观看云端视频',
       expiresAt,
     };
   }

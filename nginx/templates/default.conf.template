@@ -7,6 +7,7 @@ server {
 
     set $backend_origin http://${BACKEND_UPSTREAM};
     set $frontend_origin http://${FRONTEND_UPSTREAM};
+    set $media_origin http://${MEDIA_UPSTREAM};
 
     location /api/ {
         proxy_pass $backend_origin;
@@ -19,6 +20,21 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
+    }
+
+    location /media/ {
+        proxy_pass $media_origin/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_redirect ~^http://[^/]+/(.*)$ /media/$1;
+        proxy_redirect ~^/(.*)$ /media/$1;
     }
 
     location / {

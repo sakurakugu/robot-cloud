@@ -162,10 +162,10 @@
 
     <!-- Middle Video Area -->
     <div class="video-area">
-      <CloudFramePlayer
-        v-if="activeCloudRobotId"
+      <WhepVideoPlayer
+        v-if="activeWhepUrl"
         :key="videoPlayerKey"
-        :robot-id="activeCloudRobotId"
+        :whep-url="activeWhepUrl"
       />
 
       <div
@@ -308,7 +308,7 @@
 <script setup lang="ts">
 import ChatView from '@/features/conversation/views/ChatView.vue'
 import ActionButton from '@/features/robot/components/ActionButton.vue'
-import CloudFramePlayer from '@/features/robot/components/CloudFramePlayer.vue'
+import WhepVideoPlayer from '@/features/robot/components/WhepVideoPlayer.vue'
 import { useRobotOperationJoystick } from '@/features/robot/composables/useRobotOperationJoystick'
 import {
   defaultRobotOperationControlLayout,
@@ -352,7 +352,7 @@ const {
 
 // UI State
 const selectedUuid = ref('')
-const showVideo = ref(true)
+const showVideo = ref(false)
 const robotBattery = ref<number | undefined>(undefined) // Mock value
 const phoneBattery = ref<number | null>(null) // Mock value, null to hide
 const currentTime = ref('')
@@ -413,10 +413,10 @@ const actionButtons = [
 // Timer for clock
 let timeInterval: any = null
 
-const activeCloudRobotId = computed(() => {
+const activeWhepUrl = computed(() => {
   if (!showVideo.value || !videoSession.value?.available) return ''
-  if (videoSession.value.preferredProtocol !== 'frame') return ''
-  return selectedUuid.value || ''
+  if (videoSession.value.preferredProtocol !== 'whep') return ''
+  return videoSession.value.whepUrl || ''
 })
 
 const videoPlayerKey = computed(() => `${selectedUuid.value}-${videoPlayerVersion.value}`)
@@ -428,7 +428,7 @@ const videoPlaceholderTitle = computed(() => {
   if (videoError.value) return '获取视频会话失败'
   if (!videoSession.value) return '等待视频会话...'
   if (!videoSession.value.available) return '当前暂无可用视频'
-  if (!activeCloudRobotId.value) return '当前视频会话暂未提供可播放的视频地址'
+  if (!activeWhepUrl.value) return '当前视频会话暂未提供可播放的视频地址'
   return '等待视频信号...'
 })
 
@@ -441,7 +441,7 @@ const videoPlaceholderDetail = computed(() => {
 const videoBadgeText = computed(() => {
   if (!videoSession.value) return ''
   if (videoSession.value.mode === 'cloud') {
-    return '云端 JPEG 帧流'
+    return '云端 WHEP / WebRTC'
   }
   return '无可用视频'
 })
