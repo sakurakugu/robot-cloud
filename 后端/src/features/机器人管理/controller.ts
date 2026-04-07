@@ -129,8 +129,20 @@ export class 机器人控制器 {
    */
   createVideoSession = 处理控制器(async (req: Request) => {
     const uuid = this.获取参数(req, 'uuid');
-    const session = await this.机器人服务.获取视频会话(uuid);
+    const sessionId = typeof req.body?.sessionId === 'string' ? req.body.sessionId : undefined;
+    const session = await this.机器人服务.获取视频会话(uuid, sessionId);
     return 返回数据(session);
+  }, {
+    错误映射: 机器人命令服务错误映射,
+  });
+
+  /**
+   * 释放机器人视频会话
+   */
+  releaseVideoSession = 处理控制器(async (req: Request) => {
+    const uuid = this.获取参数(req, 'uuid');
+    const sessionId = this.获取参数(req, 'sessionId');
+    await this.机器人服务.释放视频会话(uuid, sessionId);
   }, {
     错误映射: 机器人参数错误映射,
   });

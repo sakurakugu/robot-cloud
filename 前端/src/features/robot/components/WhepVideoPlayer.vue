@@ -49,6 +49,10 @@ const videoRef = ref<HTMLVideoElement | null>(null)
 const state = ref<PlayerState>('connecting')
 const errorMsg = ref('')
 const retryKey = ref(0)
+const autoRetryCount = ref(0)
+
+const MAX_AUTO_RETRY = 12
+const AUTO_RETRY_DELAY_MS = 1000
 
 const resolvedWhepUrl = computed(() => {
   const pageUrl = new URL(window.location.href)
@@ -65,6 +69,32 @@ const resolvedWhepUrl = computed(() => {
 let peerConnection: RTCPeerConnection | null = null
 let remoteStream: MediaStream | null = null
 let sessionUrl: string | null = null
+let autoRetryTimer: ReturnType<typeof setTimeout> | null = null
+
+const clearAutoRetry = () => {
+  if (autoRetryTimer !== null) {
+    clearTimeout(autoRetryTimer)
+    autoRetryTimer = null
+  }
+}
+
+const scheduleAutoRetry = () => {
+  if (autoRetryTimer !== null || autoRetryCount.value >= MAX_AUTO_RETRY) {
+    return
+  }
+
+  autoRetryTimer = setTimeout(() => {
+    autoRetryTimer = null
+    autoRetryCount.value += 1
+    retryKey.value += 1
+  }, AUTO_RETRY_DELAY_MS)
+}
+
+const setPlayerError = (message: string) => {
+  state.value = 'error'
+  errorMsg.value = message
+  scheduleAutoRetry()
+}
 
 const cleanupSession = async () => {
   const currentSessionUrl = sessionUrl
@@ -96,6 +126,7 @@ const cleanupSession = async () => {
 
 const connect = async () => {
   await cleanupSession()
+  clearAutoRetry()
   state.value = 'connecting'
   errorMsg.value = ''
 
@@ -125,21 +156,21 @@ const connect = async () => {
         videoRef.value.srcObject = remoteStream
         void videoRef.value.play().catch(() => undefined)
       }
+      autoRetryCount.value = 0
+      clearAutoRetry()
       state.value = 'playing'
     }
 
     pc.oniceconnectionstatechange = () => {
       const currentState = pc.iceConnectionState
       if (currentState === 'failed' || currentState === 'disconnected' || currentState === 'closed') {
-        state.value = 'error'
-        errorMsg.value = `ICE 连接已断开（${currentState}）`
+        setPlayerError(`ICE 连接已断开（${currentState}）`)
       }
     }
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'failed') {
-        state.value = 'error'
-        errorMsg.value = 'WebRTC 连接建立失败'
+        setPlayerError('WebRTC 连接建立失败')
       }
     }
 
@@ -177,27 +208,30 @@ const connect = async () => {
     await pc.setRemoteDescription({
       type: 'answer',
       sdp: answerSdp,
-    })
+      })
   } catch (error: any) {
-    state.value = 'error'
-    errorMsg.value = error?.message || '未知错误'
+    setPlayerError(error?.message || '未知错误')
     await cleanupSession()
   }
 }
 
 const retry = () => {
+  clearAutoRetry()
+  autoRetryCount.value = 0
   retryKey.value += 1
 }
 
 watch(
   () => [resolvedWhepUrl.value, retryKey.value],
   () => {
+    clearAutoRetry()
     void connect()
   },
   { immediate: true },
 )
 
 onBeforeUnmount(() => {
+  clearAutoRetry()
   void cleanupSession()
 })
 

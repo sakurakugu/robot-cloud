@@ -25,6 +25,9 @@ export interface 机器人视频会话 {
   preferredProtocol: 视频会话协议;
   robotIp: string | null;
   whepUrl: string | null;
+  sessionId: string | null;
+  leaseTtlMs: number;
+  renewIntervalMs: number;
   message: string;
   expiresAt: string;
 }

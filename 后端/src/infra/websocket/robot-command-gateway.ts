@@ -81,6 +81,7 @@ export interface 机器人命令服务接口 {
   请求设置SDK模式(robotId: string, sdkMode: boolean): Promise<机器人SDK模式结果>;
   请求获取SDK模式(robotId: string): Promise<机器人SDK模式结果>;
   请求日志标记(robotId: string, message?: string): Promise<机器人日志标记结果>;
+  设置云端视频推流(robotId: string, enabled: boolean, leaseTtlMs?: number): boolean;
   请求推送安装包(
     robotId: string,
     downloadPaths: 机器人安装包下载路径,
@@ -262,6 +263,18 @@ export class 机器人命令网关 implements 机器人命令服务接口 {
       发送失败消息: '发送日志标记命令失败',
       超时毫秒: 10000,
       超时消息: '日志标记请求超时',
+    });
+  }
+
+  设置云端视频推流(robotId: string, enabled: boolean, leaseTtlMs?: number): boolean {
+    return this.依赖.发送消息(robotId, {
+      type: 'cloud_stream_control',
+      robotId,
+      timestamp: this.获取当前时间(),
+      data: {
+        enabled,
+        leaseTtlMs,
+      },
     });
   }
 

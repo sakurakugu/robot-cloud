@@ -131,8 +131,17 @@ export function capturePhoto(uuid: string) {
 /**
  * 创建视频会话
  */
-export function createRobotVideoSession(uuid: string) {
-  return http.post<RobotVideoSessionResponse>(`/api/v1/robots/${uuid}/video/session`)
+export function createRobotVideoSession(uuid: string, sessionId?: string | null) {
+  return http.post<RobotVideoSessionResponse>(`/api/v1/robots/${uuid}/video/session`, {
+    sessionId: sessionId || undefined,
+  })
+}
+
+/**
+ * 释放视频会话
+ */
+export function releaseRobotVideoSession(uuid: string, sessionId: string) {
+  return http.delete<ApiResponse>(`/api/v1/robots/${uuid}/video/session/${encodeURIComponent(sessionId)}`)
 }
 
 /**

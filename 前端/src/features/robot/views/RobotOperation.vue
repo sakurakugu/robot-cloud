@@ -331,7 +331,7 @@ import { Bot, Mic, MicOff } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { capturePhoto, createRobotVideoSession } from '../api'
+import { capturePhoto, createRobotVideoSession, releaseRobotVideoSession } from '../api'
 import type { RobotVideoSession } from '../types'
 import { useRobotStore } from '../store'
 
@@ -371,7 +371,9 @@ const sdkModeLoading = ref(false) // SDK模式切换加载状态
 const sdkModePrevValue = ref(true)
 /** 超时保护计时器，避免开关永久卡住 */
 let sdkModeSwitchTimeout: ReturnType<typeof setTimeout> | null = null
+let videoLeaseRenewTimer: ReturnType<typeof setTimeout> | null = null
 let videoRequestToken = 0
+let currentVideoSessionRobotUuid = ''
 
 const {
   layoutEditMode,
@@ -603,8 +605,63 @@ const openSettings = () => {
   router.push({ path: '/operation/edit', query: { robotUuid: selectedUuid.value, tab: 'basic' } })
 }
 
-const clearVideoSession = () => {
+const clearVideoLeaseRenewTimer = () => {
+  if (videoLeaseRenewTimer !== null) {
+    clearTimeout(videoLeaseRenewTimer)
+    videoLeaseRenewTimer = null
+  }
+}
+
+const releaseVideoLease = async (uuid: string, sessionId: string) => {
+  try {
+    await releaseRobotVideoSession(uuid, sessionId)
+  } catch {
+    // 释放失败时交给后端租约超时兜底
+  }
+}
+
+const releaseCurrentVideoSession = () => {
+  const currentSessionId = videoSession.value?.sessionId
+  const currentRobotUuid = currentVideoSessionRobotUuid
+  currentVideoSessionRobotUuid = ''
+  if (!currentRobotUuid || !currentSessionId) {
+    return
+  }
+  void releaseVideoLease(currentRobotUuid, currentSessionId)
+}
+
+const scheduleVideoSessionRenew = (session: RobotVideoSession) => {
+  clearVideoLeaseRenewTimer()
+  if (!session.available || !session.sessionId || session.renewIntervalMs <= 0 || !currentVideoSessionRobotUuid) {
+    return
+  }
+
+  videoLeaseRenewTimer = setTimeout(() => {
+    void renewVideoSession()
+  }, session.renewIntervalMs)
+}
+
+const applyVideoSession = (uuid: string, session: RobotVideoSession, restartPlayer: boolean) => {
+  currentVideoSessionRobotUuid = session.sessionId ? uuid : ''
+  videoSession.value = session
+  if (session.available && session.sessionId) {
+    scheduleVideoSessionRenew(session)
+  } else {
+    clearVideoLeaseRenewTimer()
+  }
+  if (restartPlayer) {
+    videoPlayerVersion.value += 1
+  }
+}
+
+const clearVideoSession = (options: { release?: boolean } = {}) => {
   videoRequestToken += 1
+  clearVideoLeaseRenewTimer()
+  if (options.release) {
+    releaseCurrentVideoSession()
+  } else {
+    currentVideoSessionRobotUuid = ''
+  }
   videoLoading.value = false
   videoSession.value = null
   videoError.value = ''
@@ -613,15 +670,22 @@ const clearVideoSession = () => {
 
 const loadVideoSession = async (uuid: string) => {
   const requestToken = ++videoRequestToken
+  clearVideoLeaseRenewTimer()
+  releaseCurrentVideoSession()
   videoLoading.value = true
   videoSession.value = null
   videoError.value = ''
+  currentVideoSessionRobotUuid = ''
 
   try {
     const res = await createRobotVideoSession(uuid)
-    if (requestToken !== videoRequestToken) return
-    videoSession.value = res.data
-    videoPlayerVersion.value += 1
+    if (requestToken !== videoRequestToken) {
+      if (res.data.sessionId) {
+        void releaseVideoLease(uuid, res.data.sessionId)
+      }
+      return
+    }
+    applyVideoSession(uuid, res.data, true)
   } catch (error: any) {
     if (requestToken !== videoRequestToken) return
     videoError.value = error?.message || '请求视频会话失败'
@@ -629,6 +693,33 @@ const loadVideoSession = async (uuid: string) => {
     if (requestToken === videoRequestToken) {
       videoLoading.value = false
     }
+  }
+}
+
+const renewVideoSession = async () => {
+  const uuid = currentVideoSessionRobotUuid
+  const sessionId = videoSession.value?.sessionId
+  if (!showVideo.value || !uuid || !sessionId) {
+    clearVideoLeaseRenewTimer()
+    return
+  }
+
+  const requestToken = videoRequestToken
+
+  try {
+    const res = await createRobotVideoSession(uuid, sessionId)
+    if (requestToken !== videoRequestToken) {
+      if (res.data.sessionId) {
+        void releaseVideoLease(uuid, res.data.sessionId)
+      }
+      return
+    }
+    applyVideoSession(uuid, res.data, false)
+  } catch {
+    if (requestToken !== videoRequestToken) return
+    videoLeaseRenewTimer = setTimeout(() => {
+      void renewVideoSession()
+    }, 3000)
   }
 }
 
@@ -715,7 +806,7 @@ watch(selectedUuid, async (val) => {
 
 watch([selectedUuid, showVideo], ([uuid, videoEnabled]) => {
   if (!uuid || !videoEnabled) {
-    clearVideoSession()
+    clearVideoSession({ release: true })
     return
   }
   void loadVideoSession(uuid)
@@ -749,6 +840,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (timeInterval) clearInterval(timeInterval)
+  clearVideoSession({ release: true })
   removeMessageHandler()
   wsDisconnect()
 })

@@ -20,6 +20,7 @@ import type {
   机器人视频会话,
   音频路由配置,
 } from './types';
+import { 视频会话租约管理器 } from './video-session-lease-manager';
 
 const 默认音频路由配置: 音频路由配置 = {
   mode: 'robot',
@@ -42,12 +43,14 @@ export class 机器人服务 {
   private pythonCommand: string;
   private 机器人命令服务?: 机器人命令服务接口;
   private packageService?: 机器人包查询服务;
+  private readonly 视频会话租约管理器: 视频会话租约管理器;
 
   constructor(private repository: RobotRepository, 依赖: 机器人服务依赖 = {}) {
     // Windows 上通常是 python，Linux/Mac 上通常是 python3
     this.pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     this.机器人命令服务 = 依赖.机器人命令服务;
     this.packageService = 依赖.机器人包服务;
+    this.视频会话租约管理器 = new 视频会话租约管理器();
   }
 
   /**
@@ -89,6 +92,17 @@ export class 机器人服务 {
       throw new Error('机器人命令服务未初始化');
     }
     return this.机器人命令服务;
+  }
+
+  private 同步云端视频推流(robotId: string, enabled: boolean, leaseTtlMs?: number): void {
+    if (!this.机器人命令服务) {
+      return;
+    }
+
+    const 已发送 = this.机器人命令服务.设置云端视频推流(robotId, enabled, leaseTtlMs);
+    if (!已发送) {
+      logger.warn('同步云端视频推流状态失败', { robotId, enabled, leaseTtlMs });
+    }
   }
 
   private 构建云端WHEP地址(uuid: string): string {
@@ -377,7 +391,7 @@ export class 机器人服务 {
   /**
    * 获取机器人视频会话
    */
-  async 获取视频会话(uuid: string): Promise<机器人视频会话> {
+  async 获取视频会话(uuid: string, sessionId?: string | null): Promise<机器人视频会话> {
     const robot = await this.获取机器人记录(uuid);
     if (!robot) {
       throw new Error('机器人不存在');
@@ -386,6 +400,15 @@ export class 机器人服务 {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
     if (robot.status === 'online') {
+      const 机器人命令服务 = this.获取必需机器人命令服务();
+      const 租约 = this.视频会话租约管理器.创建或续租(uuid, sessionId);
+      const 已发送 = 机器人命令服务.设置云端视频推流(uuid, true, 租约.leaseTtlMs);
+
+      if (!已发送) {
+        this.视频会话租约管理器.释放(uuid, 租约.sessionId);
+        throw new Error('机器人未连接');
+      }
+
       return {
         available: true,
         mode: 'cloud',
@@ -393,8 +416,11 @@ export class 机器人服务 {
         preferredProtocol: 'whep',
         robotIp: robot.ip,
         whepUrl: this.构建云端WHEP地址(robot.uuid),
-        message: '当前通过云端 MediaMTX / WHEP 拉流，无需与机器狗处于同一局域网',
-        expiresAt,
+        sessionId: 租约.sessionId,
+        leaseTtlMs: 租约.leaseTtlMs,
+        renewIntervalMs: 租约.renewIntervalMs,
+        message: '当前通过云端 MediaMTX / WHEP 按需拉流，前端会自动续租观看会话',
+        expiresAt: 租约.expiresAt,
       };
     }
 
@@ -405,9 +431,29 @@ export class 机器人服务 {
       preferredProtocol: 'none',
       robotIp: robot.ip,
       whepUrl: null,
+      sessionId: null,
+      leaseTtlMs: 0,
+      renewIntervalMs: 0,
       message: '机器人当前离线，请等待机器人重新上线后再观看云端视频',
       expiresAt,
     };
+  }
+
+  async 释放视频会话(uuid: string, sessionId: string): Promise<void> {
+    const robot = await this.获取机器人记录(uuid);
+    if (!robot) {
+      throw new Error('机器人不存在');
+    }
+
+    if (!sessionId.trim()) {
+      throw new Error('缺少视频会话ID');
+    }
+
+    const 释放前活跃数 = this.视频会话租约管理器.获取活跃会话数(uuid);
+    const 已释放 = this.视频会话租约管理器.释放(uuid, sessionId.trim());
+    if (已释放 && 释放前活跃数 > 0 && this.视频会话租约管理器.获取活跃会话数(uuid) === 0) {
+      this.同步云端视频推流(uuid, false);
+    }
   }
 
   /**

@@ -89,6 +89,7 @@ function 创建机器人命令服务Mock(): jest.Mocked<机器人命令服务接
     请求设置SDK模式: jest.fn(),
     请求获取SDK模式: jest.fn(),
     请求日志标记: jest.fn(),
+    设置云端视频推流: jest.fn().mockReturnValue(true),
     请求推送安装包: jest.fn(),
   };
 }
@@ -279,19 +280,23 @@ describe('机器人服务', () => {
       preferredProtocol: 'none',
       robotIp: null,
       whepUrl: null,
+      sessionId: null,
+      leaseTtlMs: 0,
+      renewIntervalMs: 0,
     }));
     expect(result.message).toContain('离线');
   });
 
   it('获取视频会话 在机器人在线时应返回云端 WHEP 地址', async () => {
     const repository = 创建机器人仓库Mock();
+    const 机器人命令服务 = 创建机器人命令服务Mock();
     repository.getRobot.mockResolvedValue(创建机器人记录({
       ip: '192.168.1.88',
       status: 'online',
       role_uuid: null,
     }));
 
-    const service = new 机器人服务(repository);
+    const service = new 机器人服务(repository, { 机器人命令服务 });
     const result = await service.获取视频会话('robot-1');
 
     expect(result).toEqual(expect.objectContaining({
@@ -301,9 +306,13 @@ describe('机器人服务', () => {
       preferredProtocol: 'whep',
       robotIp: '192.168.1.88',
       whepUrl: '/media/robots/robot-1/whep',
+      leaseTtlMs: 30000,
+      renewIntervalMs: 10000,
     }));
+    expect(result.sessionId).toBeTruthy();
     expect(result.message).toContain('MediaMTX');
     expect(result.expiresAt).toMatch(/^20\d{2}-\d{2}-\d{2}T/);
+    expect(机器人命令服务.设置云端视频推流).toHaveBeenCalledWith('robot-1', true, 30000);
   });
 
   it('获取视频会话 在机器人离线但存在IP时应返回 unavailable', async () => {
@@ -324,9 +333,29 @@ describe('机器人服务', () => {
       preferredProtocol: 'none',
       robotIp: '192.168.1.88',
       whepUrl: null,
+      sessionId: null,
+      leaseTtlMs: 0,
+      renewIntervalMs: 0,
     }));
     expect(result.message).toContain('离线');
     expect(result.expiresAt).toMatch(/^20\d{2}-\d{2}-\d{2}T/);
+  });
+
+  it('释放视频会话 在最后一个租约关闭时应通知机器人停止推流', async () => {
+    const repository = 创建机器人仓库Mock();
+    const 机器人命令服务 = 创建机器人命令服务Mock();
+    repository.getRobot.mockResolvedValue(创建机器人记录({
+      ip: '192.168.1.88',
+      status: 'online',
+      role_uuid: null,
+    }));
+
+    const service = new 机器人服务(repository, { 机器人命令服务 });
+    const session = await service.获取视频会话('robot-1');
+    await service.释放视频会话('robot-1', session.sessionId || '');
+
+    expect(机器人命令服务.设置云端视频推流).toHaveBeenNthCalledWith(1, 'robot-1', true, 30000);
+    expect(机器人命令服务.设置云端视频推流).toHaveBeenNthCalledWith(2, 'robot-1', false, undefined);
   });
 
   it('获取音量 应通过机器人命令服务查询机器人状态', async () => {

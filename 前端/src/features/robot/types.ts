@@ -122,6 +122,9 @@ export interface RobotVideoSession {
   preferredProtocol: RobotVideoSessionProtocol
   robotIp: string | null
   whepUrl: string | null
+  sessionId: string | null
+  leaseTtlMs: number
+  renewIntervalMs: number
   message: string
   expiresAt: string
 }
