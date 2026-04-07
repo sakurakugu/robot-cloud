@@ -378,28 +378,33 @@ export class 机器人服务 {
         source: 'none',
         preferredProtocol: 'none',
         robotIp: null,
-        whepUrl: null,
         hlsUrl: null,
-        requiresSameLan: false,
         message: '缺少机器人IP，暂时无法生成视频会话',
         expiresAt,
       };
     }
 
-    const 离线提示 = robot.status === 'online'
-      ? ''
-      : '；机器人当前在云端显示离线，如需播放请确认浏览器与机器狗仍处于同一局域网';
+    if (robot.status === 'online') {
+      return {
+        available: true,
+        mode: 'cloud',
+        source: 'cloud',
+        preferredProtocol: 'frame',
+        robotIp: robot.ip,
+        hlsUrl: null,
+        message: '当前通过云端业务 WebSocket 转发 JPEG 帧流，无需与机器狗处于同一局域网',
+        expiresAt,
+      };
+    }
 
     return {
-      available: true,
-      mode: 'local',
-      source: 'robot',
-      preferredProtocol: 'whep',
+      available: false,
+      mode: 'unavailable',
+      source: 'none',
+      preferredProtocol: 'none',
       robotIp: robot.ip,
-      whepUrl: `http://${robot.ip}:8889/test/whep`,
       hlsUrl: null,
-      requiresSameLan: true,
-      message: `当前仅返回机器狗本体直连视频地址，云端视频暂未接入${离线提示}`,
+      message: '机器人当前离线，请等待机器人重新上线后再观看视频',
       expiresAt,
     };
   }

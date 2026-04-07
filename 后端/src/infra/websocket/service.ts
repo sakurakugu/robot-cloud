@@ -19,6 +19,7 @@ import { WebSocket运行依赖容器, type WebSocket运行依赖配置 } from '.
 import { WebSocketSDK模式网关 } from './sdk-mode-gateway';
 import { WebSocket服务端宿主, type WebSocket默认通道路径配置 } from './server-host';
 import { WebSocketUI鉴权器 } from './ui-auth';
+import { 视频订阅网关 } from './video-subscription-gateway';
 
 type Channel = 'control' | 'business' | 'audio_upload' | 'audio_download';
 
@@ -37,6 +38,7 @@ class WebSocket服务 {
   private readonly 机器人运行网关: WebSocket机器人运行网关;
   private readonly SDK模式网关: WebSocketSDK模式网关;
   private readonly 音频会话管理器: 音频会话管理器;
+  private readonly 视频订阅网关: 视频订阅网关;
   private readonly ttsService: TTSService;
   private readonly 机器人初始化任务: Map<string, Promise<void>> = new Map();
 
@@ -50,6 +52,9 @@ class WebSocket服务 {
     this.机器人命令网关 = new 机器人命令网关({
       获取业务连接: this.获取业务连接.bind(this),
       发送消息: (robotId, message) => this.sendToRobot(robotId, message as ServerMessage, 'business'),
+    });
+    this.视频订阅网关 = new 视频订阅网关({
+      发送到机器人: this.sendToRobot.bind(this),
     });
     this.UI鉴权器 = new WebSocketUI鉴权器(
       this.运行依赖.获取账号服务.bind(this.运行依赖),
@@ -122,6 +127,9 @@ class WebSocket服务 {
       处理SDK模式设置: this.SDK模式网关.handleSdkModeSet.bind(this.SDK模式网关),
       处理SDK模式获取: this.SDK模式网关.handleSdkModeGet.bind(this.SDK模式网关),
       处理SDK模式响应: this.SDK模式网关.handleSdkModeResponse.bind(this.SDK模式网关),
+      处理视频订阅: this.视频订阅网关.handleSubscribe.bind(this.视频订阅网关),
+      处理取消视频订阅: this.视频订阅网关.handleUnsubscribe.bind(this.视频订阅网关),
+      处理视频帧: this.视频订阅网关.handleVideoFrame.bind(this.视频订阅网关),
     });
     this.连接生命周期管理器 = new WebSocket连接生命周期管理器({
       连接注册表: this.连接注册表,
@@ -132,6 +140,8 @@ class WebSocket服务 {
       发送到机器人: this.sendToRobot.bind(this),
       开始心跳检测: this.心跳管理器.setupHeartbeat.bind(this.心跳管理器),
       停止心跳检测: this.心跳管理器.clearHeartbeat.bind(this.心跳管理器),
+      处理UI断开: this.视频订阅网关.handleSocketClosed.bind(this.视频订阅网关),
+      处理机器人连接建立: this.视频订阅网关.handleRobotConnected.bind(this.视频订阅网关),
     });
     this.服务端宿主 = new WebSocket服务端宿主({
       UI鉴权器: this.UI鉴权器,

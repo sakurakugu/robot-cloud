@@ -278,13 +278,12 @@ describe('机器人服务', () => {
       source: 'none',
       preferredProtocol: 'none',
       robotIp: null,
-      whepUrl: null,
-      requiresSameLan: false,
+      hlsUrl: null,
     }));
     expect(result.message).toContain('缺少机器人IP');
   });
 
-  it('获取视频会话 在存在机器人IP时应返回本地 WHEP 地址', async () => {
+  it('获取视频会话 在机器人在线时应返回云端帧流', async () => {
     const repository = 创建机器人仓库Mock();
     repository.getRobot.mockResolvedValue(创建机器人记录({
       ip: '192.168.1.88',
@@ -297,15 +296,36 @@ describe('机器人服务', () => {
 
     expect(result).toEqual(expect.objectContaining({
       available: true,
-      mode: 'local',
-      source: 'robot',
-      preferredProtocol: 'whep',
+      mode: 'cloud',
+      source: 'cloud',
+      preferredProtocol: 'frame',
       robotIp: '192.168.1.88',
-      whepUrl: 'http://192.168.1.88:8889/test/whep',
       hlsUrl: null,
-      requiresSameLan: true,
     }));
-    expect(result.message).toContain('云端视频暂未接入');
+    expect(result.message).toContain('云端业务 WebSocket');
+    expect(result.expiresAt).toMatch(/^20\d{2}-\d{2}-\d{2}T/);
+  });
+
+  it('获取视频会话 在机器人离线但存在IP时应返回 unavailable', async () => {
+    const repository = 创建机器人仓库Mock();
+    repository.getRobot.mockResolvedValue(创建机器人记录({
+      ip: '192.168.1.88',
+      status: 'offline',
+      role_uuid: null,
+    }));
+
+    const service = new 机器人服务(repository);
+    const result = await service.获取视频会话('robot-1');
+
+    expect(result).toEqual(expect.objectContaining({
+      available: false,
+      mode: 'unavailable',
+      source: 'none',
+      preferredProtocol: 'none',
+      robotIp: '192.168.1.88',
+      hlsUrl: null,
+    }));
+    expect(result.message).toContain('已禁用本地 WHEP 直连');
     expect(result.expiresAt).toMatch(/^20\d{2}-\d{2}-\d{2}T/);
   });
 

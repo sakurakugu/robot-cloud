@@ -1,6 +1,6 @@
 import { WebSocket消息路由器 } from './message-router';
 
-jest.mock('../../core/logger', () => ({
+jest.mock('../logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -29,6 +29,9 @@ function 创建依赖() {
     处理SDK模式设置: jest.fn().mockResolvedValue(undefined),
     处理SDK模式获取: jest.fn().mockResolvedValue(undefined),
     处理SDK模式响应: jest.fn().mockResolvedValue(undefined),
+    处理视频订阅: jest.fn(),
+    处理取消视频订阅: jest.fn(),
+    处理视频帧: jest.fn(),
   };
 }
 

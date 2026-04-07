@@ -22,6 +22,8 @@ export interface WebSocket连接生命周期管理器依赖 {
   发送到机器人(robotId: string, message: ServerMessage, channel: Channel): boolean;
   开始心跳检测(robotId: string, channel: Channel): void;
   停止心跳检测(robotId: string, channel: Channel): void;
+  处理UI断开(robotId: string, ws: WebSocket): void;
+  处理机器人连接建立(robotId: string, channel: Channel): void;
 }
 
 /**
@@ -73,6 +75,7 @@ export class WebSocket连接生命周期管理器 {
         channel,
       };
       this.依赖.连接注册表.替换机器人连接(robotId, channel, connection);
+      this.依赖.处理机器人连接建立(robotId, channel);
     }
 
     if (role !== 'ui' && !上下文.isPhoneSession) {
@@ -112,6 +115,7 @@ export class WebSocket连接生命周期管理器 {
 
     ws.on('close', () => {
       if (role === 'ui') {
+        this.依赖.处理UI断开(robotId, ws);
         this.依赖.连接注册表.移除UI连接(robotId, channel, ws);
         logger.info('UI连接关闭', { robotId, channel });
         return;

@@ -42,6 +42,9 @@ export interface WebSocket消息路由器依赖 {
   处理SDK模式设置(robotId: string, data: SdkModeSetMessage['data']): Promise<void>;
   处理SDK模式获取(robotId: string): Promise<void>;
   处理SDK模式响应(robotId: string, data: SdkModeResponseMessage['data']): Promise<void>;
+  处理视频订阅(robotId: string, ws: object | undefined, role: WebSocket角色): void;
+  处理取消视频订阅(robotId: string, ws: object | undefined, role: WebSocket角色): void;
+  处理视频帧(robotId: string, data: Record<string, unknown>): void;
 }
 
 /**
@@ -58,6 +61,7 @@ export class WebSocket消息路由器 {
       'robot_register',
       'video_subscribe',
       'video_unsubscribe',
+      'video_frame',
       'heartbeat',
       'status',
       'control_input',
@@ -144,9 +148,18 @@ export class WebSocket消息路由器 {
           await this.依赖.处理机器人注册(robotId, (message as RobotRegisterMessage).data);
           break;
         case 'video_subscribe':
+          this.依赖.处理视频订阅(robotId, ws, role);
           break;
         case 'video_unsubscribe':
+          this.依赖.处理取消视频订阅(robotId, ws, role);
           break;
+        case 'video_frame': {
+          const 视频帧数据 = message.data && typeof message.data === 'object'
+            ? message.data as Record<string, unknown>
+            : {};
+          this.依赖.处理视频帧(robotId, 视频帧数据);
+          break;
+        }
         case 'action_input':
           await this.依赖.处理动作输入(
             robotId,

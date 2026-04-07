@@ -3,12 +3,12 @@ import type { IncomingMessage } from 'http';
 import { WebSocket连接注册表 } from './connection-registry';
 import { WebSocket连接生命周期管理器 } from './connection-lifecycle-manager';
 
-jest.mock('../../core/utils/helpers', () => ({
+jest.mock('../../shared/utils/helpers', () => ({
   isValidRobotId: jest.fn(() => true),
   uuidv7: jest.fn(() => 'generated-robot-id'),
 }));
 
-jest.mock('../../core/logger', () => ({
+jest.mock('../logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -51,6 +51,8 @@ function 创建依赖() {
     发送到机器人: jest.fn().mockReturnValue(true),
     开始心跳检测: jest.fn(),
     停止心跳检测: jest.fn(),
+    处理UI断开: jest.fn(),
+    处理机器人连接建立: jest.fn(),
   };
 }
 

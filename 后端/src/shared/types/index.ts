@@ -204,6 +204,17 @@ export interface VideoUnsubscribeMessage extends BaseClientMessage {
   type: 'video_unsubscribe';
 }
 
+export interface VideoFrameMessage extends BaseClientMessage {
+  type: 'video_frame';
+  data: {
+    frame: string;
+    format?: 'jpeg';
+    width?: number;
+    height?: number;
+    capturedAt?: number;
+  };
+}
+
 export interface ActionInputMessage extends BaseClientMessage {
   type: 'action_input';
   data: {
@@ -244,6 +255,7 @@ export type ClientMessage =
   | TTSInputMessage
   | VideoSubscribeMessage
   | VideoUnsubscribeMessage
+  | VideoFrameMessage
   | ActionInputMessage
   | ControlInputMessage
   | AudioControlMessage

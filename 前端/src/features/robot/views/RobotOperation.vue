@@ -162,10 +162,10 @@
 
     <!-- Middle Video Area -->
     <div class="video-area">
-      <WhepVideoPlayer
-        v-if="activeWhepUrl"
+      <CloudFramePlayer
+        v-if="activeCloudRobotId"
         :key="videoPlayerKey"
-        :whep-url="activeWhepUrl"
+        :robot-id="activeCloudRobotId"
       />
 
       <div
@@ -184,12 +184,6 @@
           class="video-placeholder__detail"
         >
           {{ videoPlaceholderDetail }}
-        </p>
-        <p
-          v-if="videoSession?.whepUrl"
-          class="video-placeholder__url"
-        >
-          {{ videoSession.whepUrl }}
         </p>
         <el-button
           v-if="showVideo && selectedUuid"
@@ -314,7 +308,7 @@
 <script setup lang="ts">
 import ChatView from '@/features/conversation/views/ChatView.vue'
 import ActionButton from '@/features/robot/components/ActionButton.vue'
-import WhepVideoPlayer from '@/features/robot/components/WhepVideoPlayer.vue'
+import CloudFramePlayer from '@/features/robot/components/CloudFramePlayer.vue'
 import { useRobotOperationJoystick } from '@/features/robot/composables/useRobotOperationJoystick'
 import {
   defaultRobotOperationControlLayout,
@@ -419,10 +413,10 @@ const actionButtons = [
 // Timer for clock
 let timeInterval: any = null
 
-const activeWhepUrl = computed(() => {
+const activeCloudRobotId = computed(() => {
   if (!showVideo.value || !videoSession.value?.available) return ''
-  if (videoSession.value.preferredProtocol !== 'whep') return ''
-  return videoSession.value.whepUrl || ''
+  if (videoSession.value.preferredProtocol !== 'frame') return ''
+  return selectedUuid.value || ''
 })
 
 const videoPlayerKey = computed(() => `${selectedUuid.value}-${videoPlayerVersion.value}`)
@@ -434,7 +428,7 @@ const videoPlaceholderTitle = computed(() => {
   if (videoError.value) return '获取视频会话失败'
   if (!videoSession.value) return '等待视频会话...'
   if (!videoSession.value.available) return '当前暂无可用视频'
-  if (!activeWhepUrl.value) return '当前视频会话暂未提供可播放的视频地址'
+  if (!activeCloudRobotId.value) return '当前视频会话暂未提供可播放的视频地址'
   return '等待视频信号...'
 })
 
@@ -446,11 +440,8 @@ const videoPlaceholderDetail = computed(() => {
 
 const videoBadgeText = computed(() => {
   if (!videoSession.value) return ''
-  if (videoSession.value.mode === 'local') {
-    return '本地直连 WHEP'
-  }
   if (videoSession.value.mode === 'cloud') {
-    return '云端视频'
+    return '云端 JPEG 帧流'
   }
   return '无可用视频'
 })
