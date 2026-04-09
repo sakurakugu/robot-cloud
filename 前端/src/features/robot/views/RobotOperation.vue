@@ -202,6 +202,262 @@
         {{ videoBadgeText }}
       </div>
 
+      <div
+        v-if="selectedUuid"
+        class="runtime-panel"
+      >
+        <div class="runtime-panel__header">
+          <div>
+            <div class="runtime-panel__title">
+              导航运行时
+            </div>
+            <div class="runtime-panel__subtitle">
+              建图、定位、导航、巡逻
+            </div>
+          </div>
+          <el-tag
+            size="small"
+            :type="runtimeControlsDisabled ? 'warning' : 'success'"
+          >
+            {{ runtimeControlsDisabled ? '云端未连' : '云端已连' }}
+          </el-tag>
+        </div>
+
+        <div class="runtime-panel__overview">
+          <div
+            v-for="item in runtimeOverviewItems"
+            :key="item.label"
+            class="runtime-chip"
+          >
+            <span class="runtime-chip__label">{{ item.label }}</span>
+            <el-tag
+              size="small"
+              :type="item.type"
+            >
+              {{ item.value }}
+            </el-tag>
+          </div>
+        </div>
+
+        <div class="runtime-panel__section">
+          <div class="runtime-panel__section-title">
+            地图与定位
+          </div>
+          <div class="runtime-panel__details">
+            <div
+              v-for="item in runtimeMapDetails"
+              :key="item.label"
+              class="runtime-detail"
+            >
+              <span class="runtime-detail__label">{{ item.label }}</span>
+              <span class="runtime-detail__value">{{ item.value }}</span>
+            </div>
+          </div>
+          <div class="runtime-panel__form">
+            <el-input
+              v-model="mapNameInput"
+              size="small"
+              placeholder="地图名称"
+            />
+            <div class="runtime-panel__actions">
+              <el-button
+                size="small"
+                type="primary"
+                :disabled="runtimeControlsDisabled"
+                @click="handleStartMapping"
+              >
+                开始建图
+              </el-button>
+              <el-button
+                size="small"
+                :disabled="runtimeControlsDisabled"
+                @click="handleStopMapping"
+              >
+                停止并保存
+              </el-button>
+              <el-button
+                size="small"
+                :disabled="runtimeControlsDisabled"
+                @click="handleLoadMap"
+              >
+                加载地图
+              </el-button>
+              <el-button
+                size="small"
+                :disabled="runtimeControlsDisabled"
+                @click="handleStartLocalization"
+              >
+                开始定位
+              </el-button>
+              <el-button
+                size="small"
+                :disabled="runtimeControlsDisabled"
+                @click="handleStopLocalization"
+              >
+                停止定位
+              </el-button>
+            </div>
+          </div>
+        </div>
+
+        <div class="runtime-panel__section">
+          <div class="runtime-panel__section-title">
+            定点导航
+          </div>
+          <div class="runtime-panel__details">
+            <div
+              v-for="item in runtimeNavigationDetails"
+              :key="item.label"
+              class="runtime-detail"
+            >
+              <span class="runtime-detail__label">{{ item.label }}</span>
+              <span class="runtime-detail__value">{{ item.value }}</span>
+            </div>
+          </div>
+          <div class="runtime-panel__goal-grid">
+            <el-input-number
+              v-model="navGoalX"
+              size="small"
+              :step="0.1"
+              controls-position="right"
+              placeholder="X"
+            />
+            <el-input-number
+              v-model="navGoalY"
+              size="small"
+              :step="0.1"
+              controls-position="right"
+              placeholder="Y"
+            />
+            <el-input-number
+              v-model="navGoalYaw"
+              size="small"
+              :step="0.1"
+              controls-position="right"
+              placeholder="Yaw"
+            />
+            <el-input
+              v-model="navGoalFrameId"
+              size="small"
+              placeholder="frame_id"
+            />
+            <el-input
+              v-model="navGoalMapName"
+              size="small"
+              placeholder="目标地图，可留空"
+            />
+          </div>
+          <div class="runtime-panel__actions">
+            <el-button
+              size="small"
+              type="primary"
+              :disabled="runtimeControlsDisabled"
+              @click="handleNavigateToGoal"
+            >
+              导航到点
+            </el-button>
+            <el-button
+              size="small"
+              :disabled="runtimeControlsDisabled"
+              @click="handleCancelNavigation"
+            >
+              取消导航
+            </el-button>
+          </div>
+        </div>
+
+        <div class="runtime-panel__section">
+          <div class="runtime-panel__section-title">
+            任务与巡逻
+          </div>
+          <div class="runtime-panel__details">
+            <div
+              v-for="item in runtimeTaskDetails"
+              :key="item.label"
+              class="runtime-detail"
+            >
+              <span class="runtime-detail__label">{{ item.label }}</span>
+              <span class="runtime-detail__value">{{ item.value }}</span>
+            </div>
+          </div>
+          <div class="runtime-panel__form">
+            <el-input
+              v-model="patrolTaskName"
+              size="small"
+              placeholder="巡逻任务名，可留空"
+            />
+            <el-input
+              v-model="patrolWaypointFile"
+              size="small"
+              placeholder="巡逻点位文件"
+            />
+            <div class="runtime-panel__actions">
+              <el-button
+                size="small"
+                type="primary"
+                :disabled="runtimeControlsDisabled"
+                @click="handleStartPatrol"
+              >
+                开始巡逻
+              </el-button>
+              <el-button
+                size="small"
+                :disabled="runtimeControlsDisabled"
+                @click="handleTaskControl('pause')"
+              >
+                暂停任务
+              </el-button>
+              <el-button
+                size="small"
+                :disabled="runtimeControlsDisabled"
+                @click="handleTaskControl('resume')"
+              >
+                恢复任务
+              </el-button>
+              <el-button
+                size="small"
+                :disabled="runtimeControlsDisabled"
+                @click="handleTaskControl('terminate')"
+              >
+                终止任务
+              </el-button>
+            </div>
+          </div>
+        </div>
+
+        <div class="runtime-panel__section">
+          <div class="runtime-panel__section-title">
+            运控桥
+          </div>
+          <div class="runtime-panel__details">
+            <div
+              v-for="item in runtimeDogBridgeDetails"
+              :key="item.label"
+              class="runtime-detail"
+            >
+              <span class="runtime-detail__label">{{ item.label }}</span>
+              <span class="runtime-detail__value">{{ item.value }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="runtime-panel__section">
+          <div class="runtime-panel__section-title">
+            雷达
+          </div>
+          <div class="runtime-panel__details">
+            <div
+              v-for="item in runtimeSensorDetails"
+              :key="item.label"
+              class="runtime-detail"
+            >
+              <span class="runtime-detail__label">{{ item.label }}</span>
+              <span class="runtime-detail__value">{{ item.value }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Floating Controls Layer -->
       <div
         ref="floatingLayerRef"
@@ -316,6 +572,13 @@ import {
 } from '@/features/robot/composables/useRobotOperationLayout'
 import JoystickPad from '@/share/components/JoystickPad.vue'
 import VoiceRecordButton from '@/share/components/VoiceRecordButton.vue'
+import type {
+  RobotSummaryData,
+  RuntimeCommandResponseData,
+  RuntimeDogBridgeData,
+  RuntimeStateData,
+  WebSocketMessage,
+} from '@/share/websocket/types'
 import { useWebSocket } from '@/share/websocket/useWebSocket'
 import {
   Back,
@@ -353,8 +616,8 @@ const {
 // UI State
 const selectedUuid = ref('')
 const showVideo = ref(false)
-const robotBattery = ref<number | undefined>(undefined) // Mock value
-const phoneBattery = ref<number | null>(null) // Mock value, null to hide
+const robotBattery = ref<number | undefined>(undefined)
+const phoneBattery = ref<number | null>(null)
 const currentTime = ref('')
 const hasUpdate = ref(true)
 const showChatPanel = ref(false)
@@ -369,6 +632,20 @@ const sdkMode = ref(true) // SDK模式开关，默认开启
 const sdkModeLoading = ref(false) // SDK模式切换加载状态
 /** 切换前的开关状态，切换失败时回滚用 */
 const sdkModePrevValue = ref(true)
+type RuntimeCommandType = 'navigation_command' | 'map_command' | 'patrol_command'
+const robotSummary = ref<RobotSummaryData | null>(null)
+const navigationState = ref<RuntimeStateData | null>(null)
+const mapState = ref<RuntimeStateData | null>(null)
+const taskState = ref<RuntimeStateData | null>(null)
+const sensorState = ref<RuntimeStateData | null>(null)
+const mapNameInput = ref('')
+const navGoalX = ref(0)
+const navGoalY = ref(0)
+const navGoalYaw = ref(0)
+const navGoalFrameId = ref('map')
+const navGoalMapName = ref('')
+const patrolTaskName = ref('')
+const patrolWaypointFile = ref('')
 /** 超时保护计时器，避免开关永久卡住 */
 let sdkModeSwitchTimeout: ReturnType<typeof setTimeout> | null = null
 let videoLeaseRenewTimer: ReturnType<typeof setTimeout> | null = null
@@ -447,6 +724,185 @@ const videoBadgeText = computed(() => {
   }
   return '无可用视频'
 })
+
+const runtimeControlsDisabled = computed(() => !selectedUuid.value || !isConnected.value)
+
+const lidarRuntimeState = computed(() => {
+  const lidar = sensorState.value?.lidar
+  if (lidar && typeof lidar === 'object' && !Array.isArray(lidar)) {
+    return lidar as Record<string, unknown>
+  }
+  return robotSummary.value?.lidar || null
+})
+
+const dogBridgeRuntimeState = computed<RuntimeDogBridgeData | null>(() => {
+  const dogBridge = robotSummary.value?.dog_bridge
+  if (dogBridge && typeof dogBridge === 'object' && !Array.isArray(dogBridge)) {
+    return dogBridge
+  }
+  return null
+})
+
+const currentTaskType = computed(() => {
+  const taskType = taskState.value?.task_type ?? robotSummary.value?.task?.task_type
+  return typeof taskType === 'string' ? taskType.trim().toLowerCase() : ''
+})
+
+const runtimeOverviewItems = computed(() => [
+  {
+    label: '建图',
+    value: formatRuntimeValue(mapState.value?.state ?? robotSummary.value?.mapping?.state),
+    type: getStateTagType(mapState.value?.state ?? robotSummary.value?.mapping?.state),
+  },
+  {
+    label: '定位',
+    value: formatRuntimeValue(robotSummary.value?.localization?.state),
+    type: getStateTagType(robotSummary.value?.localization?.state),
+  },
+  {
+    label: '导航',
+    value: formatRuntimeValue(navigationState.value?.state ?? robotSummary.value?.navigation?.state),
+    type: getStateTagType(navigationState.value?.state ?? robotSummary.value?.navigation?.state),
+  },
+  {
+    label: '任务',
+    value: formatRuntimeValue(taskState.value?.state ?? robotSummary.value?.task?.state),
+    type: getStateTagType(taskState.value?.state ?? robotSummary.value?.task?.state),
+  },
+  {
+    label: '雷达',
+    value: getLidarStatusText(lidarRuntimeState.value),
+    type: getLidarTagType(lidarRuntimeState.value),
+  },
+  {
+    label: '运控桥',
+    value: getDogBridgeStatusText(dogBridgeRuntimeState.value),
+    type: getDogBridgeTagType(dogBridgeRuntimeState.value),
+  },
+])
+
+const runtimeMapDetails = computed(() => [
+  {
+    label: '当前地图',
+    value: formatRuntimeValue(mapState.value?.current_map ?? robotSummary.value?.mapping?.current_map),
+  },
+  {
+    label: '最近地图',
+    value: formatRuntimeValue(mapState.value?.last_map ?? robotSummary.value?.mapping?.last_map),
+  },
+  {
+    label: '保存目录',
+    value: formatRuntimeValue(mapState.value?.save_dir ?? robotSummary.value?.mapping?.save_dir),
+  },
+  {
+    label: '定位地图',
+    value: formatRuntimeValue(robotSummary.value?.localization?.map_name),
+  },
+  {
+    label: '定位置信度',
+    value: formatConfidence(robotSummary.value?.localization?.confidence),
+  },
+])
+
+const runtimeNavigationDetails = computed(() => [
+  {
+    label: '当前目标',
+    value: formatGoal(navigationState.value?.current_goal ?? robotSummary.value?.navigation?.current_goal),
+  },
+  {
+    label: '剩余距离',
+    value: formatDistance(navigationState.value?.remaining_distance ?? robotSummary.value?.navigation?.remaining_distance),
+  },
+  {
+    label: '失败原因',
+    value: formatRuntimeValue(navigationState.value?.failure_reason ?? robotSummary.value?.navigation?.failure_reason),
+  },
+  {
+    label: '控制模式',
+    value: formatRuntimeValue(robotSummary.value?.health?.control_mode),
+  },
+])
+
+const runtimeTaskDetails = computed(() => [
+  {
+    label: '任务类型',
+    value: formatRuntimeValue(taskState.value?.task_type ?? robotSummary.value?.task?.task_type),
+  },
+  {
+    label: '任务 ID',
+    value: formatRuntimeValue(taskState.value?.task_id ?? robotSummary.value?.task?.task_id),
+  },
+  {
+    label: '运动模式',
+    value: formatRuntimeValue(robotSummary.value?.health?.motion_mode),
+  },
+  {
+    label: 'SDK 模式',
+    value: formatBoolean(robotSummary.value?.health?.sdk_mode),
+  },
+])
+
+const runtimeDogBridgeDetails = computed(() => [
+  {
+    label: '桥接在线',
+    value: formatBoolean(dogBridgeRuntimeState.value?.online, '在线', '离线'),
+  },
+  {
+    label: '运动控制',
+    value: formatBoolean(dogBridgeRuntimeState.value?.motion_control_enabled, '启用', '禁用'),
+  },
+  {
+    label: 'SDK 就绪',
+    value: formatBoolean(dogBridgeRuntimeState.value?.sdk_ready, '就绪', '未就绪'),
+  },
+  {
+    label: '允许运动',
+    value: formatBoolean(dogBridgeRuntimeState.value?.motion_ready, '允许', '暂停'),
+  },
+  {
+    label: '急停状态',
+    value: formatBoolean(dogBridgeRuntimeState.value?.emergency_stop, '已触发', '未触发'),
+  },
+  {
+    label: '裁决原因',
+    value: formatDogBridgeReason(dogBridgeRuntimeState.value?.arbitration_reason),
+  },
+  {
+    label: '指令延迟',
+    value: formatLatency(dogBridgeRuntimeState.value?.command_age_sec),
+  },
+  {
+    label: '遥测延迟',
+    value: formatLatency(dogBridgeRuntimeState.value?.telemetry_age_sec),
+  },
+  {
+    label: '目标速度',
+    value: formatVelocityTuple(dogBridgeRuntimeState.value?.target_velocity),
+  },
+  {
+    label: '输出速度',
+    value: formatVelocityTuple(dogBridgeRuntimeState.value?.output_velocity),
+  },
+])
+
+const runtimeSensorDetails = computed(() => [
+  {
+    label: '连接状态',
+    value: formatBoolean(lidarRuntimeState.value?.connected),
+  },
+  {
+    label: '传输方式',
+    value: formatRuntimeValue(lidarRuntimeState.value?.transport),
+  },
+  {
+    label: '坐标系',
+    value: formatRuntimeValue(lidarRuntimeState.value?.frame_id),
+  },
+  {
+    label: '扫描状态',
+    value: formatBoolean(lidarRuntimeState.value?.scan_ok, '正常', '异常'),
+  },
+])
 
 // Functions
 const goBack = () => {
@@ -728,6 +1184,292 @@ const retryVideoSession = () => {
   void loadVideoSession(selectedUuid.value)
 }
 
+function toRecord(data: unknown): Record<string, unknown> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return {}
+  }
+  return data as Record<string, unknown>
+}
+
+function parseNumericValue(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+  return undefined
+}
+
+function formatRuntimeValue(value: unknown, fallback = '未上报'): string {
+  if (value === null || value === undefined || value === '') {
+    return fallback
+  }
+  if (typeof value === 'boolean') {
+    return value ? '是' : '否'
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? String(value) : fallback
+  }
+  if (typeof value === 'string') {
+    return value.trim() || fallback
+  }
+  return JSON.stringify(value)
+}
+
+function formatBoolean(value: unknown, trueText = '开启', falseText = '关闭', fallback = '未上报'): string {
+  if (typeof value === 'boolean') {
+    return value ? trueText : falseText
+  }
+  return fallback
+}
+
+function formatDistance(value: unknown): string {
+  const parsed = parseNumericValue(value)
+  return parsed === undefined ? '未上报' : `${parsed.toFixed(2)} m`
+}
+
+function formatLatency(value: unknown): string {
+  const parsed = parseNumericValue(value)
+  return parsed === undefined ? '未上报' : `${parsed.toFixed(2)} s`
+}
+
+function formatConfidence(value: unknown): string {
+  const parsed = parseNumericValue(value)
+  if (parsed === undefined) {
+    return '未上报'
+  }
+  if (parsed <= 1) {
+    return `${Math.round(parsed * 100)}%`
+  }
+  return `${Math.round(parsed)}%`
+}
+
+function formatGoal(value: unknown): string {
+  const goal = toRecord(value)
+  const x = parseNumericValue(goal.x)
+  const y = parseNumericValue(goal.y)
+  const yaw = parseNumericValue(goal.yaw)
+  if (x === undefined || y === undefined || yaw === undefined) {
+    return formatRuntimeValue(value)
+  }
+  const frameId = typeof goal.frame_id === 'string'
+    ? goal.frame_id
+    : typeof goal.frameId === 'string'
+      ? goal.frameId
+      : 'map'
+  return `x=${x.toFixed(2)}, y=${y.toFixed(2)}, yaw=${yaw.toFixed(2)}, frame=${frameId}`
+}
+
+function formatVelocityTuple(value: unknown): string {
+  const velocity = toRecord(value)
+  const vx = parseNumericValue(velocity.vx)
+  const vy = parseNumericValue(velocity.vy)
+  const wz = parseNumericValue(velocity.wz)
+  if (vx === undefined || vy === undefined || wz === undefined) {
+    return '未上报'
+  }
+  return `vx=${vx.toFixed(2)}, vy=${vy.toFixed(2)}, wz=${wz.toFixed(2)}`
+}
+
+function formatDogBridgeReason(value: unknown): string {
+  const reason = typeof value === 'string' ? value.trim().toLowerCase() : ''
+  if (!reason) return '未上报'
+
+  const mapping: Record<string, string> = {
+    initializing: '初始化中',
+    normal: '正常输出',
+    command_timeout: '等待指令',
+    telemetry_offline: '遥测离线',
+    emergency_stop: '急停中',
+    motion_control_disabled: '仅遥测模式',
+    sdk_unavailable: 'SDK未就绪',
+    control_error: '下发失败',
+    telemetry_unavailable: '遥测接口异常',
+    bridge_status_missing: '状态未上报',
+    unknown: '未知',
+  }
+  return mapping[reason] || reason
+}
+
+function getStateTagType(value: unknown): '' | 'success' | 'warning' | 'info' | 'danger' {
+  const state = typeof value === 'string' ? value.trim().toLowerCase() : ''
+  if (!state) return 'info'
+  if (['running', 'active', 'connected', 'localizing', 'navigating', 'mapping'].includes(state)) return 'success'
+  if (['paused', 'warning'].includes(state)) return 'warning'
+  if (['error', 'failed', 'aborted', 'disconnected'].includes(state)) return 'danger'
+  return 'info'
+}
+
+function getLidarStatusText(value: Record<string, unknown> | null): string {
+  if (!value) return '未上报'
+  if (value.connected === true && value.scan_ok === true) return '在线'
+  if (value.enabled === false) return '未启用'
+  if (value.connected === false) return '未连接'
+  return '等待数据'
+}
+
+function getLidarTagType(value: Record<string, unknown> | null): '' | 'success' | 'warning' | 'info' | 'danger' {
+  if (!value) return 'info'
+  if (value.connected === true && value.scan_ok === true) return 'success'
+  if (value.enabled === false) return 'info'
+  if (value.connected === false || value.scan_ok === false) return 'warning'
+  return 'info'
+}
+
+function getDogBridgeStatusText(value: RuntimeDogBridgeData | null): string {
+  if (!value) return '未上报'
+  if (value.emergency_stop === true) return '急停中'
+  if (value.online !== true) return '未上报'
+  if (value.sdk_ready !== true) return 'SDK未就绪'
+  if (value.motion_control_enabled === false) return '仅遥测'
+  if (value.motion_ready === true) return '就绪'
+  return '在线'
+}
+
+function getDogBridgeTagType(value: RuntimeDogBridgeData | null): '' | 'success' | 'warning' | 'info' | 'danger' {
+  if (!value) return 'info'
+  if (value.emergency_stop === true) return 'danger'
+  if (value.online !== true) return 'info'
+  if (value.sdk_ready !== true || value.motion_control_enabled === false) return 'warning'
+  if (value.motion_ready === true) return 'success'
+  return 'warning'
+}
+
+function updateRobotBattery(value: unknown): void {
+  const level = parseNumericValue(value)
+  if (level !== undefined) {
+    robotBattery.value = Math.round(level)
+  }
+}
+
+const resetRuntimeState = () => {
+  robotSummary.value = null
+  navigationState.value = null
+  mapState.value = null
+  taskState.value = null
+  sensorState.value = null
+  robotBattery.value = undefined
+}
+
+const ensureRuntimeCommandReady = () => {
+  if (!selectedUuid.value) {
+    ElMessage.warning('请先选择机器人')
+    return false
+  }
+  if (!isConnected.value) {
+    ElMessage.warning('未连接机器人')
+    return false
+  }
+  return true
+}
+
+const sendRuntimeCommand = (type: RuntimeCommandType, data: Record<string, unknown>) => {
+  if (!ensureRuntimeCommandReady()) {
+    return
+  }
+  wsSendMessage({
+    type,
+    robotId: selectedUuid.value,
+    timestamp: Date.now(),
+    data,
+  })
+}
+
+const handleStartMapping = () => {
+  const mapName = mapNameInput.value.trim()
+  const data: Record<string, unknown> = { command: 'start_mapping' }
+  if (mapName) {
+    data.mapName = mapName
+  }
+  sendRuntimeCommand('map_command', data)
+}
+
+const handleStopMapping = () => {
+  sendRuntimeCommand('map_command', { command: 'stop_mapping', saveMap: true })
+}
+
+const handleLoadMap = () => {
+  const mapName = mapNameInput.value.trim()
+  if (!mapName) {
+    ElMessage.warning('请输入地图名称')
+    return
+  }
+  sendRuntimeCommand('map_command', { command: 'load_map', mapName })
+}
+
+const handleStartLocalization = () => {
+  const mapName = mapNameInput.value.trim()
+  const data: Record<string, unknown> = { command: 'start_localization' }
+  if (mapName) {
+    data.mapName = mapName
+  }
+  sendRuntimeCommand('map_command', data)
+}
+
+const handleStopLocalization = () => {
+  sendRuntimeCommand('map_command', { command: 'stop_localization' })
+}
+
+const handleNavigateToGoal = () => {
+  const goal: Record<string, unknown> = {
+    x: navGoalX.value,
+    y: navGoalY.value,
+    yaw: navGoalYaw.value,
+    frameId: navGoalFrameId.value.trim() || 'map',
+  }
+  const mapName = navGoalMapName.value.trim() || mapNameInput.value.trim()
+  if (mapName) {
+    goal.mapName = mapName
+  }
+  sendRuntimeCommand('navigation_command', {
+    command: 'navigate_to',
+    goal,
+  })
+}
+
+const handleCancelNavigation = () => {
+  sendRuntimeCommand('navigation_command', { command: 'cancel' })
+}
+
+const handleStartPatrol = () => {
+  const waypointFile = patrolWaypointFile.value.trim()
+  if (!waypointFile) {
+    ElMessage.warning('请输入巡逻点位文件')
+    return
+  }
+  const taskName = patrolTaskName.value.trim() || waypointFile
+  sendRuntimeCommand('patrol_command', {
+    command: 'start',
+    taskName,
+    waypointFile,
+  })
+}
+
+const handleTaskControl = (command: 'pause' | 'resume' | 'terminate') => {
+  const type: RuntimeCommandType = currentTaskType.value === 'patrol' ? 'patrol_command' : 'navigation_command'
+  sendRuntimeCommand(type, { command })
+}
+
+const handleRuntimeResponse = (type: string, data: unknown) => {
+  const payload = data as RuntimeCommandResponseData | undefined
+  const actionName = type === 'navigation_response'
+    ? '导航'
+    : type === 'map_response'
+      ? '地图'
+      : '巡逻'
+
+  if (payload?.success) {
+    ElMessage.success(`${actionName}命令已执行`)
+    return
+  }
+
+  ElMessage.error(payload?.error || `${actionName}命令执行失败`)
+}
+
 
 // Fetch robots
 const fetchRobots = async () => {
@@ -749,31 +1491,42 @@ const isRobotOnline = (uuid: string): boolean => {
 }
 
 // WebSocket Message Handling
-const removeMessageHandler = onMessage((data) => {
-  if (data.type === 'battery_status') {
-    robotBattery.value = data.data.level
-  } else if (data.type === 'status_update') {
-    const level = typeof data.data?.battery === 'number' ? data.data.battery : Number(data.data?.battery)
-    if (!Number.isNaN(level)) {
-      robotBattery.value = Math.round(level)
-    }
-  } else if (data.type === 'sdk_mode_response') {
-    // 处理SDK模式响应
+const removeMessageHandler = onMessage((message: WebSocketMessage) => {
+  const payload = toRecord(message.data)
+
+  if (message.type === 'battery_status') {
+    updateRobotBattery(payload.level)
+  } else if (message.type === 'status_update') {
+    updateRobotBattery(payload.battery)
+  } else if (message.type === 'robot_summary') {
+    robotSummary.value = payload as RobotSummaryData
+    updateRobotBattery(robotSummary.value?.health?.battery)
+  } else if (message.type === 'navigation_state') {
+    navigationState.value = payload
+  } else if (message.type === 'map_state') {
+    mapState.value = payload
+  } else if (message.type === 'task_state') {
+    taskState.value = payload
+  } else if (message.type === 'sensor_state') {
+    sensorState.value = payload
+  } else if (message.type === 'navigation_response' || message.type === 'map_response' || message.type === 'patrol_response') {
+    handleRuntimeResponse(message.type, payload)
+  } else if (message.type === 'sdk_mode_response') {
     if (sdkModeSwitchTimeout !== null) {
       clearTimeout(sdkModeSwitchTimeout)
       sdkModeSwitchTimeout = null
     }
     sdkModeLoading.value = false
-    if (data.data?.success) {
-      sdkMode.value = data.data.sdkMode ?? sdkMode.value
+    if (payload.success) {
+      sdkMode.value = typeof payload.sdkMode === 'boolean' ? payload.sdkMode : sdkMode.value
       ElMessage.success(sdkMode.value ? 'SDK模式已开启' : '遥控模式已开启')
     } else {
-      ElMessage.error(data.data?.error || 'SDK模式切换失败')
-      sdkMode.value = sdkModePrevValue.value // 回滚到切换前的值
+      ElMessage.error(typeof payload.error === 'string' ? payload.error : 'SDK模式切换失败')
+      sdkMode.value = sdkModePrevValue.value
     }
-  } else if (data.type === 'error') {
-    const msg = data.data?.message || '发生错误'
-    if (data.data?.code === 'NO_ROBOT_IP') {
+  } else if (message.type === 'error') {
+    const msg = typeof payload.message === 'string' ? payload.message : '发生错误'
+    if (payload.code === 'NO_ROBOT_IP') {
       ElMessage.warning(msg)
     } else {
       ElMessage.error(msg)
@@ -782,25 +1535,29 @@ const removeMessageHandler = onMessage((data) => {
 })
 
 watch(selectedUuid, async (val) => {
-  if (val) {
-    twoLegStandActive.value = false
-    if (isConnected.value) {
-      wsDisconnect()
+  resetRuntimeState()
+  if (!val) {
+    wsDisconnect()
+    return
+  }
+
+  twoLegStandActive.value = false
+  if (isConnected.value) {
+    wsDisconnect()
+  }
+  robotId.value = val
+  try {
+    await wsConnect()
+    if (isRobotOnline(val)) {
+      wsSendMessage({
+        type: 'sdk_mode_get',
+        robotId: val,
+        timestamp: Date.now(),
+        data: {},
+      })
     }
-    robotId.value = val
-    try {
-      await wsConnect()
-      if (isRobotOnline(val)) {
-        wsSendMessage({
-          type: 'sdk_mode_get',
-          robotId: val,
-          timestamp: Date.now(),
-          data: {},
-        })
-      }
-    } catch {
-      ElMessage.error('连接失败，请检查后端服务或网络')
-    }
+  } catch {
+    ElMessage.error('连接失败，请检查后端服务或网络')
   }
 })
 
@@ -840,6 +1597,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (timeInterval) clearInterval(timeInterval)
+  resetRuntimeState()
   clearVideoSession({ release: true })
   removeMessageHandler()
   wsDisconnect()
@@ -962,6 +1720,141 @@ html, body, #app {
   letter-spacing: 0.02em;
 }
 
+.runtime-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 4;
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid rgba(143, 162, 199, 0.22);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(9, 13, 24, 0.88));
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
+}
+
+.runtime-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.runtime-panel__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f2f6ff;
+}
+
+.runtime-panel__subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #92a1bf;
+}
+
+.runtime-panel__overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.runtime-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(143, 162, 199, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.runtime-chip__label {
+  font-size: 12px;
+  color: #aebad4;
+}
+
+.runtime-panel__section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(143, 162, 199, 0.14);
+}
+
+.runtime-panel__section-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #edf2ff;
+}
+
+.runtime-panel__details {
+  display: grid;
+  gap: 6px;
+}
+
+.runtime-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.runtime-detail__label {
+  color: #92a1bf;
+}
+
+.runtime-detail__value {
+  flex: 1;
+  min-width: 0;
+  color: #edf2ff;
+  text-align: right;
+  word-break: break-all;
+}
+
+.runtime-panel__form {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.runtime-panel__goal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.runtime-panel__goal-grid :deep(.el-input-number) {
+  width: 100%;
+}
+
+.runtime-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.runtime-panel :deep(.el-input__wrapper),
+.runtime-panel :deep(.el-input-number__decrease),
+.runtime-panel :deep(.el-input-number__increase) {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+
+.runtime-panel :deep(.el-input__inner),
+.runtime-panel :deep(.el-input-number .el-input__inner) {
+  color: #edf2ff;
+}
+
 .floating-layer {
   position: absolute;
   inset: 0;
@@ -1076,5 +1969,21 @@ html, body, #app {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .runtime-panel {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 12px;
+    width: auto;
+    max-height: 52%;
+  }
+
+  .runtime-panel__overview,
+  .runtime-panel__goal-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

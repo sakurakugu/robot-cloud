@@ -244,6 +244,164 @@ export interface AudioControlMessage extends BaseClientMessage {
   };
 }
 
+export interface RuntimeCommandGoal {
+  x?: number | string;
+  y?: number | string;
+  yaw?: number | string;
+  frame_id?: string;
+  frameId?: string;
+  map_name?: string;
+  mapName?: string;
+  goal_id?: string;
+  goalId?: string;
+  [key: string]: unknown;
+}
+
+export interface RuntimeCommandData extends Record<string, unknown> {
+  requestId?: string;
+  command?: string;
+  action?: string;
+  operation?: string;
+  op?: string;
+  goal?: RuntimeCommandGoal;
+}
+
+export interface NavigationCommandMessage extends BaseClientMessage {
+  type: 'navigation_command';
+  data: RuntimeCommandData;
+}
+
+export interface MapCommandMessage extends BaseClientMessage {
+  type: 'map_command';
+  data: RuntimeCommandData;
+}
+
+export interface PatrolCommandMessage extends BaseClientMessage {
+  type: 'patrol_command';
+  data: RuntimeCommandData;
+}
+
+export interface RuntimeCommandResponseData extends Record<string, unknown> {
+  requestId?: string;
+  success?: boolean;
+  data?: Record<string, unknown> | null;
+  error?: string;
+  errorCode?: string;
+}
+
+export interface NavigationResponseMessage extends BaseClientMessage {
+  type: 'navigation_response';
+  data: RuntimeCommandResponseData;
+}
+
+export interface MapResponseMessage extends BaseClientMessage {
+  type: 'map_response';
+  data: RuntimeCommandResponseData;
+}
+
+export interface PatrolResponseMessage extends BaseClientMessage {
+  type: 'patrol_response';
+  data: RuntimeCommandResponseData;
+}
+
+export interface RuntimeHealthData extends Record<string, unknown> {
+  online?: boolean;
+  battery?: number | string | null;
+  sdk_mode?: boolean;
+  control_mode?: string;
+  motion_mode?: string;
+}
+
+export interface RuntimeLidarData extends Record<string, unknown> {
+  enabled?: boolean;
+  connected?: boolean;
+  transport?: string;
+  frame_id?: string;
+  scan_ok?: boolean;
+}
+
+export interface RuntimeMapData extends Record<string, unknown> {
+  state?: string;
+  current_map?: string;
+  last_map?: string | null;
+  save_dir?: string;
+  auto_save?: boolean;
+}
+
+export interface RuntimeLocalizationData extends Record<string, unknown> {
+  state?: string;
+  map_name?: string;
+  confidence?: number | string | null;
+}
+
+export interface RuntimeNavigationData extends Record<string, unknown> {
+  state?: string;
+  current_goal?: Record<string, unknown> | null;
+  remaining_distance?: number | string | null;
+  failure_reason?: string | null;
+}
+
+export interface RuntimeDogBridgeVelocityData extends Record<string, unknown> {
+  vx?: number | string | null;
+  vy?: number | string | null;
+  wz?: number | string | null;
+}
+
+export interface RuntimeDogBridgeData extends Record<string, unknown> {
+  online?: boolean;
+  motion_control_enabled?: boolean;
+  sdk_ready?: boolean;
+  telemetry_online?: boolean;
+  motion_ready?: boolean;
+  emergency_stop?: boolean;
+  arbitration_reason?: string;
+  command_age_sec?: number | string | null;
+  telemetry_age_sec?: number | string | null;
+  target_velocity?: RuntimeDogBridgeVelocityData;
+  output_velocity?: RuntimeDogBridgeVelocityData;
+}
+
+export interface RuntimeTaskData extends Record<string, unknown> {
+  state?: string;
+  task_type?: string | null;
+  task_id?: string | null;
+}
+
+export interface RobotSummaryData extends Record<string, unknown> {
+  health?: RuntimeHealthData;
+  dog_bridge?: RuntimeDogBridgeData;
+  lidar?: RuntimeLidarData;
+  mapping?: RuntimeMapData;
+  localization?: RuntimeLocalizationData;
+  navigation?: RuntimeNavigationData;
+  task?: RuntimeTaskData;
+}
+
+export interface RobotSummaryMessage extends BaseClientMessage {
+  type: 'robot_summary';
+  data: RobotSummaryData;
+}
+
+export interface NavigationStateMessage extends BaseClientMessage {
+  type: 'navigation_state';
+  data: RuntimeNavigationData;
+}
+
+export interface MapStateMessage extends BaseClientMessage {
+  type: 'map_state';
+  data: RuntimeMapData;
+}
+
+export interface TaskStateMessage extends BaseClientMessage {
+  type: 'task_state';
+  data: RuntimeTaskData;
+}
+
+export interface SensorStateMessage extends BaseClientMessage {
+  type: 'sensor_state';
+  data: Record<string, unknown>;
+}
+
 export type ClientMessage =
   | TextInputMessage
   | AudioStartMessage
@@ -259,9 +417,20 @@ export type ClientMessage =
   | ActionInputMessage
   | ControlInputMessage
   | AudioControlMessage
+  | NavigationCommandMessage
+  | MapCommandMessage
+  | PatrolCommandMessage
   | SdkModeSetMessage
   | SdkModeGetMessage
-  | SdkModeResponseMessage;
+  | SdkModeResponseMessage
+  | NavigationResponseMessage
+  | MapResponseMessage
+  | PatrolResponseMessage
+  | RobotSummaryMessage
+  | NavigationStateMessage
+  | MapStateMessage
+  | TaskStateMessage
+  | SensorStateMessage;
 
 export interface SdkModeSetMessage extends BaseClientMessage {
   type: 'sdk_mode_set';

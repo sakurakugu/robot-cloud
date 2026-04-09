@@ -1,14 +1,18 @@
-import type { RobotConnection } from '../../types';
-import type { RobotRecord } from '../机器人管理/types';
+import type { RobotRecord } from '../../features/机器人管理/types';
+import type { RobotConnection } from '../../shared/types';
 import { WebSocket机器人运行网关 } from './robot-runtime-gateway';
 
-jest.mock('../../core/logger', () => ({
+jest.mock('../logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
   },
+}));
+
+jest.mock('../../shared/utils/helpers', () => ({
+  uuidv7: jest.fn(() => 'generated-request-id'),
 }));
 
 function 创建机器人记录(partial: Partial<RobotRecord> = {}): RobotRecord {
@@ -92,14 +96,81 @@ describe('WebSocket机器人运行网关', () => {
       data: {
         level: 88,
       },
-    }), 'control');
+    }), 'business');
     expect(依赖.发送到UI).toHaveBeenNthCalledWith(2, 'robot-1', expect.objectContaining({
       type: 'status_update',
       data: {
         battery: '87.6',
         pose: 'stand',
       },
-    }), 'control');
+    }), 'business');
+  });
+
+  it('处理运行时摘要时应广播 robot_summary 并同步电量', () => {
+    const 依赖 = 创建依赖();
+    const 网关 = new WebSocket机器人运行网关(依赖 as any);
+
+    网关.handleRobotSummary('robot-1', {
+      health: {
+        battery: 66,
+        sdk_mode: true,
+      },
+      mapping: {
+        state: 'idle',
+      },
+      dog_bridge: {
+        arbitration_reason: 'normal',
+        emergency_stop: false,
+        output_velocity: {
+          vx: 0.1,
+          vy: 0,
+          wz: 0,
+        },
+      },
+    });
+
+    expect(依赖.发送到UI).toHaveBeenNthCalledWith(1, 'robot-1', expect.objectContaining({
+      type: 'battery_status',
+      data: {
+        level: 66,
+      },
+    }), 'business');
+    expect(依赖.发送到UI).toHaveBeenNthCalledWith(2, 'robot-1', expect.objectContaining({
+      type: 'robot_summary',
+      data: expect.objectContaining({
+        health: expect.objectContaining({
+          battery: 66,
+        }),
+        dog_bridge: expect.objectContaining({
+          arbitration_reason: 'normal',
+          output_velocity: expect.objectContaining({
+            vx: 0.1,
+          }),
+        }),
+      }),
+    }), 'business');
+  });
+
+  it('处理导航命令时应补 requestId 并转发到机器人', async () => {
+    const 依赖 = 创建依赖();
+    const 网关 = new WebSocket机器人运行网关(依赖 as any);
+
+    await 网关.handleNavigationCommand('robot-1', {
+      command: 'navigate_to',
+      goal: {
+        x: 1,
+        y: 2,
+        yaw: 0,
+      },
+    });
+
+    expect(依赖.发送到机器人).toHaveBeenCalledWith('robot-1', expect.objectContaining({
+      type: 'navigation_command',
+      data: expect.objectContaining({
+        command: 'navigate_to',
+        requestId: expect.any(String),
+      }),
+    }), 'business');
   });
 
   it('处理机器人注册时应写库并刷新业务连接元数据', async () => {

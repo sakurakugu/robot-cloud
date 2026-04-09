@@ -6,10 +6,21 @@ import type {
   AudioStartMessage,
   ClientMessage,
   ControlInputMessage,
+  MapCommandMessage,
+  MapResponseMessage,
+  MapStateMessage,
+  NavigationCommandMessage,
+  NavigationResponseMessage,
+  NavigationStateMessage,
+  PatrolCommandMessage,
+  PatrolResponseMessage,
   RobotRegisterMessage,
+  RobotSummaryMessage,
+  SensorStateMessage,
   SdkModeResponseMessage,
   SdkModeSetMessage,
   StatusMessage,
+  TaskStateMessage,
   TTSInputMessage,
   TTSOptions,
   TextInputMessage,
@@ -39,9 +50,20 @@ export interface WebSocket消息路由器依赖 {
   处理机器人注册(robotId: string, data: RobotRegisterMessage['data']): Promise<void>;
   处理动作输入(robotId: string, action: string, parameters?: ActionInputMessage['data']['parameters']): Promise<void>;
   处理控制输入(robotId: string, data: ControlInputMessage['data']): Promise<void>;
+  处理导航命令(robotId: string, data: NavigationCommandMessage['data']): Promise<void>;
+  处理地图命令(robotId: string, data: MapCommandMessage['data']): Promise<void>;
+  处理巡逻命令(robotId: string, data: PatrolCommandMessage['data']): Promise<void>;
   处理SDK模式设置(robotId: string, data: SdkModeSetMessage['data']): Promise<void>;
   处理SDK模式获取(robotId: string): Promise<void>;
   处理SDK模式响应(robotId: string, data: SdkModeResponseMessage['data']): Promise<void>;
+  处理机器人摘要(robotId: string, data: RobotSummaryMessage['data']): void;
+  处理导航状态(robotId: string, data: NavigationStateMessage['data']): void;
+  处理地图状态(robotId: string, data: MapStateMessage['data']): void;
+  处理任务状态(robotId: string, data: TaskStateMessage['data']): void;
+  处理传感器状态(robotId: string, data: SensorStateMessage['data']): void;
+  处理导航响应(robotId: string, data: NavigationResponseMessage['data']): void;
+  处理地图响应(robotId: string, data: MapResponseMessage['data']): void;
+  处理巡逻响应(robotId: string, data: PatrolResponseMessage['data']): void;
   处理视频订阅(robotId: string, ws: object | undefined, role: WebSocket角色): void;
   处理取消视频订阅(robotId: string, ws: object | undefined, role: WebSocket角色): void;
   处理视频帧(robotId: string, data: Record<string, unknown>): void;
@@ -65,6 +87,17 @@ export class WebSocket消息路由器 {
       'heartbeat',
       'status',
       'control_input',
+      'navigation_command',
+      'map_command',
+      'patrol_command',
+      'robot_summary',
+      'navigation_state',
+      'map_state',
+      'task_state',
+      'sensor_state',
+      'navigation_response',
+      'map_response',
+      'patrol_response',
       'camera_response',
       'sdk_mode_set',
       'sdk_mode_get',
@@ -170,6 +203,15 @@ export class WebSocket消息路由器 {
         case 'control_input':
           await this.依赖.处理控制输入(robotId, (message as ControlInputMessage).data);
           break;
+        case 'navigation_command':
+          await this.依赖.处理导航命令(robotId, (message as NavigationCommandMessage).data);
+          break;
+        case 'map_command':
+          await this.依赖.处理地图命令(robotId, (message as MapCommandMessage).data);
+          break;
+        case 'patrol_command':
+          await this.依赖.处理巡逻命令(robotId, (message as PatrolCommandMessage).data);
+          break;
         case 'sdk_mode_set':
           await this.依赖.处理SDK模式设置(robotId, (message as SdkModeSetMessage).data);
           break;
@@ -178,6 +220,30 @@ export class WebSocket消息路由器 {
           break;
         case 'sdk_mode_response':
           await this.依赖.处理SDK模式响应(robotId, (message as SdkModeResponseMessage).data);
+          break;
+        case 'robot_summary':
+          this.依赖.处理机器人摘要(robotId, (message as RobotSummaryMessage).data);
+          break;
+        case 'navigation_state':
+          this.依赖.处理导航状态(robotId, (message as NavigationStateMessage).data);
+          break;
+        case 'map_state':
+          this.依赖.处理地图状态(robotId, (message as MapStateMessage).data);
+          break;
+        case 'task_state':
+          this.依赖.处理任务状态(robotId, (message as TaskStateMessage).data);
+          break;
+        case 'sensor_state':
+          this.依赖.处理传感器状态(robotId, (message as SensorStateMessage).data);
+          break;
+        case 'navigation_response':
+          this.依赖.处理导航响应(robotId, (message as NavigationResponseMessage).data);
+          break;
+        case 'map_response':
+          this.依赖.处理地图响应(robotId, (message as MapResponseMessage).data);
+          break;
+        case 'patrol_response':
+          this.依赖.处理巡逻响应(robotId, (message as PatrolResponseMessage).data);
           break;
         default:
           logger.warn('未知的消息类型', { robotId, type: message.type });

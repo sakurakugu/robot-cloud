@@ -1,15 +1,38 @@
 import type { RobotRecord } from '../../features/机器人管理/types';
 import type {
+  MapCommandMessage,
+  MapResponseMessage,
+  MapStateMessage,
+  NavigationCommandMessage,
+  NavigationResponseMessage,
+  NavigationStateMessage,
+  PatrolCommandMessage,
+  PatrolResponseMessage,
   RobotConnection,
   RobotRegisterMessage,
+  RobotSummaryMessage,
   ServerMessage,
+  SensorStateMessage,
   StatusMessage,
+  TaskStateMessage,
 } from '../../shared/types';
+import { uuidv7 } from '../../shared/utils/helpers';
 import { logger } from '../logger';
 
 type Channel = 'control' | 'business' | 'audio_upload' | 'audio_download';
 type 机器人状态消息 = Pick<StatusMessage, 'robotId' | 'data'> & Partial<Pick<StatusMessage, 'timestamp'>>;
 type 机器人注册数据 = RobotRegisterMessage['data'];
+type 机器人摘要数据 = RobotSummaryMessage['data'];
+type 导航状态数据 = NavigationStateMessage['data'];
+type 地图状态数据 = MapStateMessage['data'];
+type 任务状态数据 = TaskStateMessage['data'];
+type 传感器状态数据 = SensorStateMessage['data'];
+type 导航命令数据 = NavigationCommandMessage['data'];
+type 地图命令数据 = MapCommandMessage['data'];
+type 巡逻命令数据 = PatrolCommandMessage['data'];
+type 导航响应数据 = NavigationResponseMessage['data'];
+type 地图响应数据 = MapResponseMessage['data'];
+type 巡逻响应数据 = PatrolResponseMessage['data'];
 
 export interface WebSocket机器人运行网关依赖 {
   获取机器人记录(robotId: string): Promise<RobotRecord | undefined>;
@@ -81,7 +104,7 @@ export class WebSocket机器人运行网关 {
           data: {
             level: Math.round(levelNum),
           },
-        }, 'control');
+        }, 'business');
       }
     } catch (error) {
       logger.error('广播电量状态失败', this.转成错误对象(error), { robotId });
@@ -93,10 +116,69 @@ export class WebSocket机器人运行网关 {
         robotId: payload.robotId || robotId,
         timestamp: Date.now(),
         data: payload.data || {},
-      }, 'control');
+      }, 'business');
     } catch (error) {
       logger.error('广播状态更新失败', this.转成错误对象(error), { robotId });
     }
+  }
+
+  async handleNavigationCommand(robotId: string, data: 导航命令数据): Promise<void> {
+    await this.转发运行时命令(robotId, 'navigation_command', data, 'NAVIGATION_COMMAND_ERROR', '导航命令发送失败');
+  }
+
+  async handleMapCommand(robotId: string, data: 地图命令数据): Promise<void> {
+    await this.转发运行时命令(robotId, 'map_command', data, 'MAP_COMMAND_ERROR', '地图命令发送失败');
+  }
+
+  async handlePatrolCommand(robotId: string, data: 巡逻命令数据): Promise<void> {
+    await this.转发运行时命令(robotId, 'patrol_command', data, 'PATROL_COMMAND_ERROR', '巡逻命令发送失败');
+  }
+
+  handleRobotSummary(robotId: string, data: 机器人摘要数据): void {
+    const payload = this.规范化对象(data);
+    logger.debug('收到运行时摘要', { robotId, payload });
+
+    const levelNum = this.解析摘要电量(payload);
+    if (levelNum !== undefined) {
+      this.依赖.发送到UI(robotId, {
+        type: 'battery_status',
+        robotId,
+        timestamp: Date.now(),
+        data: {
+          level: Math.round(levelNum),
+        },
+      }, 'business');
+    }
+
+    this.广播运行时消息(robotId, 'robot_summary', payload);
+  }
+
+  handleNavigationState(robotId: string, data: 导航状态数据): void {
+    this.广播运行时消息(robotId, 'navigation_state', data);
+  }
+
+  handleMapState(robotId: string, data: 地图状态数据): void {
+    this.广播运行时消息(robotId, 'map_state', data);
+  }
+
+  handleTaskState(robotId: string, data: 任务状态数据): void {
+    this.广播运行时消息(robotId, 'task_state', data);
+  }
+
+  handleSensorState(robotId: string, data: 传感器状态数据): void {
+    this.广播运行时消息(robotId, 'sensor_state', data);
+  }
+
+  handleNavigationResponse(robotId: string, data: 导航响应数据): void {
+    this.广播运行时消息(robotId, 'navigation_response', data);
+  }
+
+  handleMapResponse(robotId: string, data: 地图响应数据): void {
+    this.广播运行时消息(robotId, 'map_response', data);
+  }
+
+  handlePatrolResponse(robotId: string, data: 巡逻响应数据): void {
+    this.广播运行时消息(robotId, 'patrol_response', data);
   }
 
   async handleRobotRegister(robotId: string, data: 机器人注册数据): Promise<void> {
@@ -169,6 +251,69 @@ export class WebSocket机器人运行网关 {
     }
 
     return undefined;
+  }
+
+  private 解析摘要电量(data: 机器人摘要数据): number | undefined {
+    const health = data.health;
+    if (!health || typeof health !== 'object') {
+      return undefined;
+    }
+    return this.解析电量(health.battery);
+  }
+
+  private 广播运行时消息(robotId: string, type: string, data: Record<string, unknown>): void {
+    const payload = this.规范化对象(data);
+    this.依赖.发送到UI(robotId, {
+      type,
+      robotId,
+      timestamp: Date.now(),
+      data: payload,
+    }, 'business');
+  }
+
+  private async 转发运行时命令(
+    robotId: string,
+    type: 'navigation_command' | 'map_command' | 'patrol_command',
+    data: Record<string, unknown>,
+    errorCode: string,
+    fallbackMessage: string,
+  ): Promise<void> {
+    try {
+      const payload = this.规范化命令数据(data);
+      logger.info('收到运行时命令', { robotId, type, payload });
+
+      const sent = this.依赖.发送到机器人(robotId, {
+        type,
+        robotId,
+        timestamp: Date.now(),
+        data: payload,
+      }, 'business');
+
+      if (!sent) {
+        this.依赖.发送错误(robotId, 'ROBOT_OFFLINE', '机器人未连接', 'business');
+      }
+    } catch (error) {
+      logger.error('转发运行时命令失败', this.转成错误对象(error), { robotId, type });
+      this.依赖.发送错误(robotId, errorCode, this.提取错误消息(error, fallbackMessage), 'business');
+    }
+  }
+
+  private 规范化命令数据(data: Record<string, unknown>): Record<string, unknown> {
+    const payload = this.规范化对象(data);
+    const requestId = typeof payload.requestId === 'string' && payload.requestId.trim()
+      ? payload.requestId.trim()
+      : uuidv7();
+    return {
+      ...payload,
+      requestId,
+    };
+  }
+
+  private 规范化对象(data: unknown): Record<string, unknown> {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return {};
+    }
+    return { ...(data as Record<string, unknown>) };
   }
 
   private 转成错误对象(error: unknown): Error {

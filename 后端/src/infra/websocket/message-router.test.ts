@@ -26,9 +26,20 @@ function 创建依赖() {
     处理机器人注册: jest.fn().mockResolvedValue(undefined),
     处理动作输入: jest.fn().mockResolvedValue(undefined),
     处理控制输入: jest.fn().mockResolvedValue(undefined),
+    处理导航命令: jest.fn().mockResolvedValue(undefined),
+    处理地图命令: jest.fn().mockResolvedValue(undefined),
+    处理巡逻命令: jest.fn().mockResolvedValue(undefined),
     处理SDK模式设置: jest.fn().mockResolvedValue(undefined),
     处理SDK模式获取: jest.fn().mockResolvedValue(undefined),
     处理SDK模式响应: jest.fn().mockResolvedValue(undefined),
+    处理机器人摘要: jest.fn(),
+    处理导航状态: jest.fn(),
+    处理地图状态: jest.fn(),
+    处理任务状态: jest.fn(),
+    处理传感器状态: jest.fn(),
+    处理导航响应: jest.fn(),
+    处理地图响应: jest.fn(),
+    处理巡逻响应: jest.fn(),
     处理视频订阅: jest.fn(),
     处理取消视频订阅: jest.fn(),
     处理视频帧: jest.fn(),
@@ -88,6 +99,41 @@ describe('WebSocket消息路由器', () => {
 
     expect(依赖.发送错误).toHaveBeenCalledWith('robot-1', 'CHANNEL_MISMATCH', '消息通道不匹配', 'audio_upload');
     expect(依赖.处理文本输入).not.toHaveBeenCalled();
+  });
+
+  it('应在业务通道分发 navigation_command', async () => {
+    const 依赖 = 创建依赖();
+    const 路由器 = new WebSocket消息路由器(依赖 as any);
+
+    await 路由器.handleMessage(
+      'robot-1',
+      Buffer.from(JSON.stringify({
+        type: 'navigation_command',
+        robotId: 'robot-1',
+        timestamp: Date.now(),
+        data: {
+          command: 'navigate_to',
+          goal: {
+            x: 1.2,
+            y: 3.4,
+            yaw: 0.5,
+            frameId: 'map',
+          },
+        },
+      })),
+      'business',
+      {},
+      'ui',
+    );
+
+    expect(依赖.处理导航命令).toHaveBeenCalledWith('robot-1', expect.objectContaining({
+      command: 'navigate_to',
+      goal: expect.objectContaining({
+        x: 1.2,
+        y: 3.4,
+        yaw: 0.5,
+      }),
+    }));
   });
 
   it('消息解析失败时应返回 MESSAGE_PARSE_ERROR', async () => {
