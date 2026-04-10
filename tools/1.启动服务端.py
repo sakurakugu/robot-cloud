@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -39,6 +40,9 @@ ANSI_GREEN = "\033[32m"
 ANSI_YELLOW = "\033[33m"
 ANSI_RED = "\033[31m"
 开发版_DOCKER_服务 = ["postgres", "mediamtx", "coturn"]
+开发版_TURN_中继端口候选起点 = range(30000, 45000, 100)
+开发版_TURN_默认端口数量 = 41
+开发_docker_环境缓存: Optional[dict[str, str]] = None
 
 
 def echo(msg: str) -> None:
@@ -174,12 +178,86 @@ def 读取根环境变量() -> dict[str, str]:
     return 解析_dotenv(env_file)
 
 
+def 解析端口值(value: str, *, 名称: str) -> int:
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise RuntimeError(f"{名称} 必须是整数: {value}") from exc
+
+    if not 1 <= port <= 65535:
+        raise RuntimeError(f"{名称} 超出有效范围: {value}")
+    return port
+
+
+def 端口可绑定(port: int, *, 协议类型: int) -> bool:
+    sock = socket.socket(socket.AF_INET, 协议类型)
+    try:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        sock.bind(("0.0.0.0", port))
+        return True
+    except OSError:
+        return False
+    finally:
+        sock.close()
+
+
+def 端口同时可绑定(port: int) -> bool:
+    return 端口可绑定(port, 协议类型=socket.SOCK_STREAM) and 端口可绑定(
+        port,
+        协议类型=socket.SOCK_DGRAM,
+    )
+
+
+def 查找可用_turn_中继端口范围(*, 端口数量: int) -> tuple[int, int]:
+    for 起始端口 in 开发版_TURN_中继端口候选起点:
+        结束端口 = 起始端口 + 端口数量 - 1
+        if all(端口同时可绑定(port) for port in range(起始端口, 结束端口 + 1)):
+            return 起始端口, 结束端口
+
+    raise RuntimeError(
+        "未找到可用的 TURN 中继端口范围，请在 .env 中手动设置 "
+        "MEDIA_TURN_RELAY_PORT_MIN 和 MEDIA_TURN_RELAY_PORT_MAX。"
+    )
+
+
 def 构建开发_docker_环境() -> dict[str, str]:
+    global 开发_docker_环境缓存
+    if 开发_docker_环境缓存 is not None:
+        return 开发_docker_环境缓存.copy()
+
+    env_map = 读取根环境变量()
     env = os.environ.copy()
     env.setdefault("MEDIA_PUBLIC_HOST", "127.0.0.1")
     env.setdefault("MEDIA_TURN_DOMAIN", "127.0.0.1")
     env.setdefault("MEDIA_TURN_EXTERNAL_IP", "127.0.0.1")
     env.setdefault("MEDIA_WHEP_HTTP_PORT", "8889")
+    relay_port_min = env.get("MEDIA_TURN_RELAY_PORT_MIN") or env_map.get(
+        "MEDIA_TURN_RELAY_PORT_MIN"
+    )
+    relay_port_max = env.get("MEDIA_TURN_RELAY_PORT_MAX") or env_map.get(
+        "MEDIA_TURN_RELAY_PORT_MAX"
+    )
+
+    if relay_port_min and relay_port_max:
+        min_port = 解析端口值(relay_port_min, 名称="MEDIA_TURN_RELAY_PORT_MIN")
+        max_port = 解析端口值(relay_port_max, 名称="MEDIA_TURN_RELAY_PORT_MAX")
+        if min_port > max_port:
+            raise RuntimeError(
+                "MEDIA_TURN_RELAY_PORT_MIN 不能大于 MEDIA_TURN_RELAY_PORT_MAX。"
+            )
+    elif relay_port_min or relay_port_max:
+        raise RuntimeError(
+            "MEDIA_TURN_RELAY_PORT_MIN 和 MEDIA_TURN_RELAY_PORT_MAX 必须同时设置。"
+        )
+    else:
+        min_port, max_port = 查找可用_turn_中继端口范围(
+            端口数量=开发版_TURN_默认端口数量
+        )
+
+    env["MEDIA_TURN_RELAY_PORT_MIN"] = str(min_port)
+    env["MEDIA_TURN_RELAY_PORT_MAX"] = str(max_port)
+    开发_docker_环境缓存 = env.copy()
     return env
 
 
