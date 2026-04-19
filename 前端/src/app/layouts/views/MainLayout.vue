@@ -8,7 +8,7 @@
         >
           <Bot />
         </el-icon>
-        <h1>机器狗管理应用</h1>
+        <h1>机器狗管理云端</h1>
         <el-button
           text
           class="home-btn"
