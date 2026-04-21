@@ -6,26 +6,11 @@
       @back="goHome"
     >
       <template #extra>
-        <el-text
-          v-if="!loading && sessions.length > 0"
-          type="info"
-          size="small"
-        >
-          共 {{ sessions.length }} 台设备在线
-        </el-text>
-        <el-button
-          :icon="Refresh"
-          :loading="loading"
-          @click="loadSessions"
-        >
-          刷新设备
-        </el-button>
         <el-button
           type="primary"
-          :icon="HomeFilled"
-          @click="goHome"
+          @click="openFeedbackDialog"
         >
-          首页
+          提交反馈
         </el-button>
       </template>
     </PageHeader>
@@ -66,15 +51,6 @@
               <span class="label">最后更新</span>
               <span class="value">{{ userInfo?.updatedAt ? formatDate(userInfo.updatedAt) : '-' }}</span>
             </div>
-          </div>
-          <div class="profile-actions">
-            <el-button
-              type="primary"
-              plain
-              @click="openFeedbackDialog"
-            >
-              提交反馈
-            </el-button>
           </div>
         </el-card>
       </el-col>
@@ -137,6 +113,22 @@
             >
               可查看当前账号的活跃设备，并手动下线非当前设备
             </el-text>
+          </div>
+          <div class="card-actions">
+            <el-text
+              v-if="!loading && sessions.length > 0"
+              type="info"
+              size="small"
+            >
+              共 {{ sessions.length }} 台设备在线
+            </el-text>
+            <el-button
+              :icon="Refresh"
+              :loading="loading"
+              @click="loadSessions"
+            >
+              刷新设备
+            </el-button>
           </div>
         </div>
       </template>
@@ -246,7 +238,7 @@ import { useAuthStore } from '@/features/auth/store'
 import type { LoginSession } from '@/features/auth/types'
 import PageHeader from '@/share/components/PageHeader.vue'
 import { formatDate, formatDateTime } from '@/share/utils/date'
-import { HomeFilled, Refresh, User } from '@element-plus/icons-vue'
+import { Refresh, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -379,10 +371,6 @@ onMounted(loadSessions)
   padding-top: 24px;
 }
 
-.profile-actions {
-  margin-top: 20px;
-}
-
 .stat-item {
   display: flex;
   justify-content: space-between;
@@ -408,6 +396,12 @@ onMounted(loadSessions)
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
