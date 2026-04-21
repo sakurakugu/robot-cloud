@@ -14,13 +14,7 @@ export const authLayoutRoutes: RouteRecordRaw[] = [
     path: '/personal',
     name: 'PersonalCenter',
     component: () => import('@/features/auth/views/PersonalCenter.vue'),
-    meta: { title: '个人资料', requireAuth: true, icon: 'User' },
-  },
-  {
-    path: '/sessions',
-    name: 'LoginDevices',
-    component: () => import('@/features/auth/views/LoginDevices.vue'),
-    meta: { title: '登录设备', requireAuth: true, icon: 'Monitor' },
+    meta: { title: '个人中心', requireAuth: true, icon: 'User' },
   },
   {
     path: '/users',

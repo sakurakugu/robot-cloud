@@ -1,11 +1,25 @@
 <template>
   <div class="page">
     <PageHeader
-      title="个人资料"
+      title="个人中心"
       :icon="User"
       @back="goHome"
     >
       <template #extra>
+        <el-text
+          v-if="!loading && sessions.length > 0"
+          type="info"
+          size="small"
+        >
+          共 {{ sessions.length }} 台设备在线
+        </el-text>
+        <el-button
+          :icon="Refresh"
+          :loading="loading"
+          @click="loadSessions"
+        >
+          刷新设备
+        </el-button>
         <el-button
           type="primary"
           :icon="HomeFilled"
@@ -75,6 +89,12 @@
             <el-descriptions-item label="用户名">
               {{ userInfo?.username }}
             </el-descriptions-item>
+            <el-descriptions-item label="昵称">
+              {{ userInfo?.nickname || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="邮箱">
+              {{ userInfo?.email || '-' }}
+            </el-descriptions-item>
             <el-descriptions-item label="角色权限">
               <el-tag
                 :type="roleType"
@@ -86,24 +106,117 @@
             <el-descriptions-item label="最近登录">
               {{ userInfo?.lastLoginAt ? formatDateTime(userInfo.lastLoginAt) : '从未登录' }}
             </el-descriptions-item>
+            <el-descriptions-item label="个人简介">
+              {{ userInfo?.bio || '暂未填写' }}
+            </el-descriptions-item>
           </el-descriptions>
         </el-card>
       </el-col>
     </el-row>
+
+    <el-card
+      shadow="hover"
+      class="sessions-card"
+    >
+      <template #header>
+        <div class="card-header">
+          <div>
+            <span class="card-title">登录设备</span>
+            <el-text
+              class="card-subtitle"
+              type="info"
+            >
+              可查看当前账号的活跃设备，并手动下线非当前设备
+            </el-text>
+          </div>
+        </div>
+      </template>
+
+      <el-table
+        v-loading="loading"
+        :data="sessions"
+        border
+        :empty-text="'暂无登录记录'"
+      >
+        <el-table-column
+          prop="deviceName"
+          label="设备"
+          min-width="220"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="clientType"
+          label="类型"
+          width="100"
+        >
+          <template #default="{ row }">
+            <el-tag
+              size="small"
+              :type="row.clientType === 'mobile' ? 'warning' : 'primary'"
+              effect="light"
+            >
+              {{ row.clientType === 'mobile' ? '手机端' : row.clientType === 'web' ? 'Web' : row.clientType }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="ipAddress"
+          label="IP地址"
+          width="140"
+        />
+        <el-table-column
+          label="最近活跃"
+          min-width="180"
+        >
+          <template #default="{ row }">
+            {{ formatDateTime(row.lastSeenAt) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="状态"
+          width="140"
+        >
+          <template #default="{ row }">
+            <el-tag
+              v-if="row.current"
+              type="success"
+              effect="dark"
+              size="small"
+            >
+              当前设备
+            </el-tag>
+            <el-button
+              v-else
+              type="danger"
+              plain
+              size="small"
+              @click="kick(row.id)"
+            >
+              下线
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
+import { getMySessions, revokeSession } from '@/features/auth/api'
 import { useAuthStore } from '@/features/auth/store'
+import type { LoginSession } from '@/features/auth/types'
 import PageHeader from '@/share/components/PageHeader.vue'
 import { formatDate, formatDateTime } from '@/share/utils/date'
-import { HomeFilled, User } from '@element-plus/icons-vue'
-import { computed } from 'vue'
+import { HomeFilled, Refresh, User } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const userInfo = computed(() => authStore.user)
+const loading = ref(false)
+const sessions = ref<LoginSession[]>([])
 
 const roleName = computed(() => {
   const role = userInfo.value?.role
@@ -136,6 +249,24 @@ const roleType = computed(() => {
 const goHome = () => {
   router.push('/home')
 }
+
+const loadSessions = async () => {
+  try {
+    loading.value = true
+    const res = await getMySessions()
+    sessions.value = res.data
+  } finally {
+    loading.value = false
+  }
+}
+
+const kick = async (id: string) => {
+  await revokeSession(id)
+  ElMessage.success('设备已下线')
+  await loadSessions()
+}
+
+onMounted(loadSessions)
 </script>
 
 <style scoped>
@@ -152,6 +283,10 @@ const goHome = () => {
 }
 
 .info-card {
+  margin-bottom: 20px;
+}
+
+.sessions-card {
   margin-bottom: 20px;
 }
 
@@ -198,5 +333,24 @@ const goHome = () => {
 .stat-item .value {
   color: var(--el-text-color-primary);
   font-weight: 500;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.card-subtitle {
+  display: block;
+  margin-top: 4px;
 }
 </style>
