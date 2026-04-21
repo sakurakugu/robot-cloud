@@ -5,167 +5,75 @@
       :icon="Tools"
     />
 
-    <div class="content">
-      <el-card shadow="hover">
-        <el-form
-          :model="formData"
-          label-width="140px"
-          label-position="left"
-        >
-          <el-form-item label="主题模式">
-            <el-radio-group v-model="theme">
-              <el-radio value="system">
-                跟随系统
-              </el-radio>
-              <el-radio value="light">
-                浅色
-              </el-radio>
-              <el-radio value="dark">
-                深色
-              </el-radio>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item label="界面语言">
-            <el-select
-              v-model="language"
-              placeholder="选择语言"
-              style="width: 200px"
-            >
-              <el-option
-                label="简体中文"
-                value="zh-CN"
-              />
-              <el-option
-                label="English"
-                value="en-US"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="字体大小">
-            <el-radio-group v-model="fontSize">
-              <el-radio value="small">
-                小
-              </el-radio>
-              <el-radio value="medium">
-                中
-              </el-radio>
-              <el-radio value="large">
-                大
-              </el-radio>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item>
-            <el-button
-              type="primary"
-              :icon="Select"
-              @click="save"
-            >
-              保存
-            </el-button>
-            <el-button
-              style="margin-left: 12px"
-              @click="openFeedbackDialog"
-            >
-              反馈
-            </el-button>
-            <el-text
-              v-if="saved"
-              type="success"
-              style="margin-left: 12px"
-            >
-              已保存
-            </el-text>
-          </el-form-item>
-        </el-form>
-      </el-card>
-    </div>
+    <section class="settings-section">
+      <div class="section-header">
+        <div>
+          <h3>外观</h3>
+          <p>管理云端工作台当前设备上的主题显示方式。</p>
+        </div>
+      </div>
 
-    <el-dialog
-      v-model="feedbackDialogVisible"
-      title="提交反馈"
-      width="520px"
-      destroy-on-close
-    >
-      <el-input
-        v-model="feedbackContent"
-        type="textarea"
-        :rows="6"
-        maxlength="1000"
-        show-word-limit
-        placeholder="请输入反馈内容"
-      />
-      <template #footer>
-        <el-button @click="feedbackDialogVisible = false">
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="feedbackSubmitting"
-          :disabled="!feedbackContent.trim()"
-          @click="handleSubmitFeedback"
-        >
-          提交
-        </el-button>
-      </template>
-    </el-dialog>
+      <div class="settings-list">
+        <div class="settings-row">
+          <div class="setting-main">
+            <div class="setting-title">
+              夜间模式
+            </div>
+            <div class="setting-description">
+              关闭时使用浅色模式。启用“跟随系统”后此项仅展示当前状态。
+            </div>
+          </div>
+          <div class="setting-side">
+            <span class="setting-value">{{ isDarkMode ? '深色' : '浅色' }}</span>
+            <el-switch
+              :model-value="isDarkMode"
+              :disabled="themeStore.followSystem"
+              @update:model-value="handleDarkModeChange"
+            />
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="setting-main">
+            <div class="setting-title">
+              跟随系统
+            </div>
+            <div class="setting-description">
+              开启后自动根据系统当前的明暗主题切换显示模式。
+            </div>
+          </div>
+          <div class="setting-side">
+            <span class="setting-value">{{ themeStore.followSystem ? '已开启' : '已关闭' }}</span>
+            <el-switch
+              :model-value="themeStore.followSystem"
+              @update:model-value="handleFollowSystemChange"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { submitFeedback } from '@/features/settings/api'
+import { useThemeStore } from '@/app/theme/store'
 import PageHeader from '@/share/components/PageHeader.vue'
-import { Select, Tools } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { onMounted, ref } from 'vue'
+import { Tools } from '@element-plus/icons-vue'
+import { computed } from 'vue'
 
 defineOptions({
   name: 'AppSettingsPage',
 })
 
-const formData = ref({})
-const theme = ref<'system' | 'dark' | 'light'>('system')
-const language = ref<'zh-CN' | 'en-US'>('zh-CN')
-const fontSize = ref<'small' | 'medium' | 'large'>('medium')
-const saved = ref(false)
-const feedbackDialogVisible = ref(false)
-const feedbackContent = ref('')
-const feedbackSubmitting = ref(false)
+const themeStore = useThemeStore()
+const isDarkMode = computed(() => themeStore.getEffectiveTheme() === 'dark')
 
-onMounted(() => {
-  theme.value = (localStorage.getItem('rc_theme') as any) || 'system'
-  language.value = (localStorage.getItem('rc_language') as any) || 'zh-CN'
-  fontSize.value = (localStorage.getItem('rc_fontSize') as any) || 'medium'
-})
-
-const save = () => {
-  localStorage.setItem('rc_theme', theme.value)
-  localStorage.setItem('rc_language', language.value)
-  localStorage.setItem('rc_fontSize', fontSize.value)
-  saved.value = true
-  setTimeout(() => (saved.value = false), 1200)
+function handleDarkModeChange(value: boolean): void {
+  themeStore.setTheme(value ? 'dark' : 'light')
 }
 
-const openFeedbackDialog = () => {
-  feedbackContent.value = ''
-  feedbackDialogVisible.value = true
-}
-
-const handleSubmitFeedback = async () => {
-  const content = feedbackContent.value.trim()
-  if (!content || feedbackSubmitting.value) {
-    return
-  }
-  feedbackSubmitting.value = true
-  try {
-    await submitFeedback({ content })
-    ElMessage.success('反馈提交成功')
-    feedbackDialogVisible.value = false
-    feedbackContent.value = ''
-  } catch (error: any) {
-    ElMessage.error(error?.message || '反馈提交失败')
-  } finally {
-    feedbackSubmitting.value = false
-  }
+function handleFollowSystemChange(value: boolean): void {
+  themeStore.setFollowSystem(value)
 }
 </script>
 
@@ -177,11 +85,87 @@ const handleSubmitFeedback = async () => {
   overflow: auto;
 }
 
-.content {
-  max-width: 800px;
+.settings-section {
+  max-width: 820px;
 }
 
-:deep(.el-card__body) {
-  padding: 30px;
+.section-header {
+  margin-bottom: 14px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--el-text-color-primary);
+}
+
+.section-header p {
+  margin: 8px 0 0;
+  color: var(--el-text-color-secondary);
+}
+
+.settings-list {
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 18px;
+  background: var(--el-bg-color);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 24px;
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.setting-main {
+  min-width: 0;
+}
+
+.setting-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.setting-description {
+  margin-top: 8px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+}
+
+.setting-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.setting-value {
+  min-width: 52px;
+  color: var(--el-text-color-secondary);
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .settings-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .setting-side {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .setting-value {
+    text-align: left;
+  }
 }
 </style>

@@ -67,6 +67,15 @@
               <span class="value">{{ userInfo?.updatedAt ? formatDate(userInfo.updatedAt) : '-' }}</span>
             </div>
           </div>
+          <div class="profile-actions">
+            <el-button
+              type="primary"
+              plain
+              @click="openFeedbackDialog"
+            >
+              提交反馈
+            </el-button>
+          </div>
         </el-card>
       </el-col>
 
@@ -198,10 +207,40 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-dialog
+      v-model="feedbackDialogVisible"
+      title="提交反馈"
+      width="520px"
+      destroy-on-close
+    >
+      <el-input
+        v-model="feedbackContent"
+        type="textarea"
+        :rows="6"
+        maxlength="1000"
+        show-word-limit
+        placeholder="请输入反馈内容"
+      />
+      <template #footer>
+        <el-button @click="feedbackDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="feedbackSubmitting"
+          :disabled="!feedbackContent.trim()"
+          @click="handleSubmitFeedback"
+        >
+          提交
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { submitFeedback } from '@/features/settings/api'
 import { getMySessions, revokeSession } from '@/features/auth/api'
 import { useAuthStore } from '@/features/auth/store'
 import type { LoginSession } from '@/features/auth/types'
@@ -217,6 +256,9 @@ const authStore = useAuthStore()
 const userInfo = computed(() => authStore.user)
 const loading = ref(false)
 const sessions = ref<LoginSession[]>([])
+const feedbackDialogVisible = ref(false)
+const feedbackContent = ref('')
+const feedbackSubmitting = ref(false)
 
 const roleName = computed(() => {
   const role = userInfo.value?.role
@@ -266,6 +308,29 @@ const kick = async (id: string) => {
   await loadSessions()
 }
 
+const openFeedbackDialog = () => {
+  feedbackContent.value = ''
+  feedbackDialogVisible.value = true
+}
+
+const handleSubmitFeedback = async () => {
+  const content = feedbackContent.value.trim()
+  if (!content || feedbackSubmitting.value) {
+    return
+  }
+  feedbackSubmitting.value = true
+  try {
+    await submitFeedback({ content })
+    ElMessage.success('反馈提交成功')
+    feedbackDialogVisible.value = false
+    feedbackContent.value = ''
+  } catch (error: any) {
+    ElMessage.error(error?.message || '反馈提交失败')
+  } finally {
+    feedbackSubmitting.value = false
+  }
+}
+
 onMounted(loadSessions)
 </script>
 
@@ -312,6 +377,10 @@ onMounted(loadSessions)
   margin-top: 24px;
   border-top: 1px solid var(--el-border-color-lighter);
   padding-top: 24px;
+}
+
+.profile-actions {
+  margin-top: 20px;
 }
 
 .stat-item {

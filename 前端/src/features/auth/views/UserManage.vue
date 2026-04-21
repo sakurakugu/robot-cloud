@@ -2,10 +2,8 @@
 import {
   createUser,
   deleteUser,
-  getRegisterConfig,
   getUsers,
   resetUserPassword,
-  updateRegisterConfig,
   updateUserApproval,
   updateUser,
 } from '@/features/auth/api'
@@ -36,10 +34,6 @@ const keyword = ref('')
 const roleFilter = ref('all')
 const activeFilter = ref('all')
 const approvalFilter = ref<'all' | RegistrationApprovalStatus>('all')
-const registerEnabled = ref(true)
-const registerApprovalRequired = ref(false)
-const registerConfigLoading = ref(false)
-const registerConfigSaving = ref(false)
 
 const showCreate = ref(false)
 const creating = ref(false)
@@ -81,7 +75,6 @@ const allRoleOptions = [
 ]
 
 const canManageSuperAdmin = computed(() => auth.isSuperAdmin)
-const canManageRegisterPolicy = computed(() => auth.isSuperAdmin)
 const roleOptions = computed(() =>
   canManageSuperAdmin.value
     ? allRoleOptions
@@ -219,34 +212,6 @@ async function fetchUsers(resetPage = false) {
     pageSize.value = res.data.page_size
   } finally {
     loading.value = false
-  }
-}
-
-async function fetchRegisterPolicy() {
-  registerConfigLoading.value = true
-  try {
-    const res = await getRegisterConfig()
-    registerEnabled.value = res.data.registerEnabled
-    registerApprovalRequired.value = res.data.registerApprovalRequired
-  } finally {
-    registerConfigLoading.value = false
-  }
-}
-
-async function saveRegisterPolicy(payload: {
-  registerEnabled?: boolean
-  registerApprovalRequired?: boolean
-}) {
-  registerConfigSaving.value = true
-  try {
-    const res = await updateRegisterConfig(payload)
-    registerEnabled.value = res.data.registerEnabled
-    registerApprovalRequired.value = res.data.registerApprovalRequired
-    ElMessage.success('注册配置已更新')
-  } catch (error: any) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '注册配置更新失败')
-  } finally {
-    registerConfigSaving.value = false
   }
 }
 
@@ -404,9 +369,6 @@ function handlePageSizeChange(nextPageSize: number) {
 }
 
 onMounted(() => {
-  if (canManageRegisterPolicy.value) {
-    fetchRegisterPolicy()
-  }
   fetchUsers()
 })
 </script>
@@ -477,52 +439,6 @@ onMounted(() => {
         </div>
       </template>
     </PageHeader>
-
-    <el-card
-      v-if="canManageRegisterPolicy"
-      class="policy-card"
-      shadow="hover"
-    >
-      <div class="policy-grid">
-        <div class="policy-item">
-          <div class="policy-main">
-            <div class="policy-title-row">
-              <span class="policy-title">允许新用户注册</span>
-              <el-tag :type="registerEnabled ? 'success' : 'danger'">
-                {{ registerEnabled ? '已开启' : '已关闭' }}
-              </el-tag>
-            </div>
-            <div class="policy-desc">
-              关闭后登录页和手机端将隐藏注册入口，后端也会拒绝注册请求
-            </div>
-          </div>
-          <el-switch
-            :model-value="registerEnabled"
-            :loading="registerConfigLoading || registerConfigSaving"
-            @update:model-value="saveRegisterPolicy({ registerEnabled: Boolean($event) })"
-          />
-        </div>
-
-        <div class="policy-item">
-          <div class="policy-main">
-            <div class="policy-title-row">
-              <span class="policy-title">注册后需要审核</span>
-              <el-tag :type="registerApprovalRequired ? 'warning' : 'info'">
-                {{ registerApprovalRequired ? '已开启' : '已关闭' }}
-              </el-tag>
-            </div>
-            <div class="policy-desc">
-              开启后，新注册账号会进入待审核状态，主管理员通过后才能登录
-            </div>
-          </div>
-          <el-switch
-            :model-value="registerApprovalRequired"
-            :loading="registerConfigLoading || registerConfigSaving"
-            @update:model-value="saveRegisterPolicy({ registerApprovalRequired: Boolean($event) })"
-          />
-        </div>
-      </div>
-    </el-card>
 
     <el-skeleton
       :loading="loading"
@@ -847,50 +763,6 @@ onMounted(() => {
   gap: 10px;
 }
 
-.policy-card {
-  margin-bottom: 12px;
-}
-
-.policy-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
-}
-
-.policy-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 12px;
-  background: var(--el-fill-color-light);
-}
-
-.policy-main {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.policy-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.policy-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.policy-desc {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--el-text-color-secondary);
-}
-
 .user-list {
   display: flex;
   flex-direction: column;
@@ -974,11 +846,6 @@ onMounted(() => {
 
   .header-actions {
     justify-content: flex-start;
-  }
-
-  .policy-item {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 </style>
