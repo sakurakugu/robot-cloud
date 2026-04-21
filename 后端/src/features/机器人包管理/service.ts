@@ -49,19 +49,9 @@ export function semverToVersionCode(version: string): number {
 }
 
 function toPackageInfo(record: RobotPackageRecord): RobotPackageInfo {
-  const agent: PackageFileInfo | null =
-    record.agent_file_name !== null && record.agent_file_size !== null && record.agent_file_hash !== null
-      ? { fileName: record.agent_file_name, fileSize: record.agent_file_size, fileHash: record.agent_file_hash }
-      : null;
-
-  const server: PackageFileInfo | null =
-    record.server_file_name !== null && record.server_file_size !== null && record.server_file_hash !== null
-      ? { fileName: record.server_file_name, fileSize: record.server_file_size, fileHash: record.server_file_hash }
-      : null;
-
-  const common: PackageFileInfo | null =
-    record.common_file_name !== null && record.common_file_size !== null && record.common_file_hash !== null
-      ? { fileName: record.common_file_name, fileSize: record.common_file_size, fileHash: record.common_file_hash }
+  const full: PackageFileInfo | null =
+    record.full_file_name !== null && record.full_file_size !== null && record.full_file_hash !== null
+      ? { fileName: record.full_file_name, fileSize: record.full_file_size, fileHash: record.full_file_hash }
       : null;
 
   return {
@@ -71,9 +61,7 @@ function toPackageInfo(record: RobotPackageRecord): RobotPackageInfo {
     changelog: record.changelog,
     isActive: record.is_active === 1,
     uploadedAt: record.uploaded_at,
-    agent,
-    server,
-    common,
+    full,
   };
 }
 
@@ -101,11 +89,7 @@ export class 机器人包服务 {
   private readonly 初始化目录任务: Promise<void>;
 
   constructor(private repository: RobotPackageRepository) {
-    this.初始化目录任务 = Promise.all(
-      (['agent', 'server', 'common'] as PackageType[]).map(async (sub) => {
-        await 异步文件系统.mkdir(path.join(PKG_DIR, sub), { recursive: true });
-      }),
-    ).then(() => undefined);
+    this.初始化目录任务 = 异步文件系统.mkdir(path.join(PKG_DIR, 'full'), { recursive: true }).then(() => undefined);
   }
 
   private async 确保存储目录(): Promise<void> {
@@ -128,16 +112,15 @@ export class 机器人包服务 {
       throw new Error('至少需要上传一个包文件');
     }
 
-    const saved: Partial<Record<PackageType, { fileName: string; fileSize: number; fileHash: string }>> = {};
-
-    for (const item of items) {
-      const hash = verifyHash(item.buffer, item.hash);
-      const fileName = `${channel}_${versionCode}_${item.type}_${hash.slice(0, 8)}.tar.gz`;
-      const filePath = path.join(PKG_DIR, item.type, fileName);
-      await 异步文件系统.writeFile(filePath, new Uint8Array(item.buffer));
-      logger.info(`机器人包已保存: ${fileName} (${item.size} bytes)`);
-      saved[item.type] = { fileName, fileSize: item.size, fileHash: hash };
+    if (items.length !== 1 || items[0]?.type !== 'full') {
+      throw new Error('当前仅支持上传单个 full 整包');
     }
+    const item = items[0];
+    const hash = verifyHash(item.buffer, item.hash);
+    const fileName = `${channel}_${versionCode}_full_${hash.slice(0, 8)}.tar.gz`;
+    const filePath = path.join(PKG_DIR, item.type, fileName);
+    await 异步文件系统.writeFile(filePath, new Uint8Array(item.buffer));
+    logger.info(`机器人整包已保存: ${fileName} (${item.size} bytes)`);
 
     const record = await this.repository.withTransaction(async (repository) => {
       await repository.deactivateChannel(channel);
@@ -146,15 +129,9 @@ export class 机器人包服务 {
         channel,
         changelog: changelog || null,
         is_active: 1,
-        agent_file_name: saved.agent?.fileName ?? null,
-        agent_file_size: saved.agent?.fileSize ?? null,
-        agent_file_hash: saved.agent?.fileHash ?? null,
-        server_file_name: saved.server?.fileName ?? null,
-        server_file_size: saved.server?.fileSize ?? null,
-        server_file_hash: saved.server?.fileHash ?? null,
-        common_file_name: saved.common?.fileName ?? null,
-        common_file_size: saved.common?.fileSize ?? null,
-        common_file_hash: saved.common?.fileHash ?? null,
+        full_file_name: fileName,
+        full_file_size: item.size,
+        full_file_hash: hash,
       });
     });
 
@@ -209,9 +186,7 @@ export class 机器人包服务 {
 
     // 删除物理文件
     const fileEntries: Array<{ type: PackageType; fileName: string | null }> = [
-      { type: 'agent', fileName: record.agent_file_name },
-      { type: 'server', fileName: record.server_file_name },
-      { type: 'common', fileName: record.common_file_name },
+      { type: 'full', fileName: record.full_file_name },
     ];
 
     for (const entry of fileEntries) {

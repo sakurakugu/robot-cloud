@@ -152,7 +152,10 @@ CREATE TABLE IF NOT EXISTS robot_package_versions (
   server_file_hash TEXT,
   common_file_name TEXT,
   common_file_size INTEGER,
-  common_file_hash TEXT
+  common_file_hash TEXT,
+  full_file_name TEXT,
+  full_file_size INTEGER,
+  full_file_hash TEXT
 );
 
 ALTER TABLE roles ADD COLUMN IF NOT EXISTS asr_provider TEXT;

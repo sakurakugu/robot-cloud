@@ -426,15 +426,11 @@ export interface PackageDownloadCommandMessage {
     requestId: string;
     /** 各包的相对下载路径（机器人自行拼接 HTTP 基础 URL） */
     downloadPaths: {
-      agent?: string;
-      server?: string;
-      common?: string;
+      full?: string;
     };
     /** 各包的 SHA-256 哈希，用于下载后校验 */
     hashes: {
-      agent?: string;
-      server?: string;
-      common?: string;
+      full?: string;
     };
   };
 }

@@ -9,12 +9,10 @@ import type { PackageType, ReleaseChannel } from './types';
 
 /** 包类型到安装包文件名映射 */
 const PACKAGE_FILENAMES: Record<PackageType, string> = {
-  agent: 'robot-agent.tar.gz',
-  server: 'robot-server.tar.gz',
-  common: 'sparkrobot-common.tar.gz',
+  full: 'robot-full.tar.gz',
 };
 
-const VALID_PACKAGE_TYPES: PackageType[] = ['agent', 'server', 'common'];
+const VALID_PACKAGE_TYPES: PackageType[] = ['full'];
 
 export class 机器人包控制器 {
   constructor(private service: 机器人包服务) {}
@@ -23,7 +21,7 @@ export class 机器人包控制器 {
   upload = 处理控制器(async (req: Request) => {
     const files = req.files as Record<string, Express.Multer.File[]> | undefined;
     if (!files || Object.keys(files).length === 0) {
-      throw Http错误工厂.参数错误('至少需要上传一个包文件');
+      throw Http错误工厂.参数错误('请上传 full 整包文件');
     }
 
     const { version, versionCode, channel, changelog } = req.body;
@@ -57,8 +55,8 @@ export class 机器人包控制器 {
       items.push({ buffer: file.buffer, size: file.size, type, hash: String(hash) });
     }
 
-    if (items.length === 0) {
-      throw Http错误工厂.参数错误('至少需要上传一个包文件');
+    if (items.length !== 1 || items[0]?.type !== 'full') {
+      throw Http错误工厂.参数错误('必须上传单个 full 整包文件');
     }
 
     const info = await this.service.uploadPackages(
@@ -105,17 +103,17 @@ export class 机器人包控制器 {
       throw Http错误工厂.参数错误('channel 必须是 stable 或 beta');
     }
     const info = await this.service.getActive(channel);
-    if (!info) {
+    if (!info || !info.full) {
       throw Http错误工厂.未找到('没有可用的安装包');
     }
     return 返回数据(info);
   });
 
-  /** GET /robot-packages/download/:type?channel=stable — 下载指定类型的安装包 */
+  /** GET /robot-packages/download/:type?channel=stable — 下载整包 */
   download = 处理控制器(async (req: Request, res: Response) => {
     const type = req.params.type as PackageType;
-    if (!['agent', 'server', 'common'].includes(type)) {
-      throw Http错误工厂.参数错误('无效的包类型，必须是 agent、server 或 common');
+    if (type !== 'full') {
+      throw Http错误工厂.参数错误('无效的包类型，必须是 full');
     }
     const channel = (req.query.channel as ReleaseChannel) || 'stable';
     if (!['stable', 'beta'].includes(channel)) {

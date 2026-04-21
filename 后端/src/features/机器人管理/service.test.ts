@@ -108,13 +108,11 @@ function 创建机器人包信息(partial: Partial<RobotPackageInfo> = {}): Robo
     changelog: null,
     isActive: true,
     uploadedAt: '2026-01-01T00:00:00.000Z',
-    agent: {
-      fileName: 'agent.tar.gz',
+    full: {
+      fileName: 'robot-full.tar.gz',
       fileSize: 1024,
-      fileHash: 'agent-hash',
+      fileHash: 'full-hash',
     },
-    server: null,
-    common: null,
     ...partial,
   };
 }
@@ -386,20 +384,15 @@ describe('机器人服务', () => {
     const 机器人包服务Mock = 创建机器人包服务Mock();
     repository.getRobot.mockResolvedValue(创建机器人记录());
     机器人包服务Mock.getActive.mockResolvedValue(创建机器人包信息({
-      agent: {
-        fileName: 'agent.tar.gz',
+      full: {
+        fileName: 'robot-full.tar.gz',
         fileSize: 1024,
-        fileHash: 'agent-hash',
-      },
-      common: {
-        fileName: 'common.tar.gz',
-        fileSize: 2048,
-        fileHash: 'common-hash',
+        fileHash: 'full-hash',
       },
     }));
     机器人命令服务.请求推送安装包.mockResolvedValue({
       success: true,
-      downloaded: ['agent', 'common'],
+      downloaded: ['full'],
     });
 
     const service = new 机器人服务(repository, {
@@ -409,17 +402,15 @@ describe('机器人服务', () => {
     const result = await service.更新固件('robot-1');
 
     expect(result).toEqual({
-      downloaded: ['agent', 'common'],
+      downloaded: ['full'],
     });
     expect(机器人命令服务.请求推送安装包).toHaveBeenCalledWith(
       'robot-1',
       {
-        agent: '/api/v1/robot-packages/download/agent?channel=stable',
-        common: '/api/v1/robot-packages/download/common?channel=stable',
+        full: '/api/v1/robot-packages/download/full?channel=stable',
       },
       {
-        agent: 'agent-hash',
-        common: 'common-hash',
+        full: 'full-hash',
       },
     );
   });

@@ -7,15 +7,9 @@ type 创建机器人包版本输入 = {
   channel: ReleaseChannel;
   changelog: string | null;
   is_active: number;
-  agent_file_name: string | null;
-  agent_file_size: number | null;
-  agent_file_hash: string | null;
-  server_file_name: string | null;
-  server_file_size: number | null;
-  server_file_hash: string | null;
-  common_file_name: string | null;
-  common_file_size: number | null;
-  common_file_hash: string | null;
+  full_file_name: string | null;
+  full_file_size: number | null;
+  full_file_hash: string | null;
 };
 
 type 可用数据库 = 可查询数据库 | 可事务数据库;
@@ -52,25 +46,17 @@ export class PostgresRobotPackageRepository implements RobotPackageRepository {
     const result = await this.database.query<RobotPackageRecord>(
       `INSERT INTO robot_package_versions
         (version_code, channel, changelog, is_active,
-         agent_file_name, agent_file_size, agent_file_hash,
-         server_file_name, server_file_size, server_file_hash,
-         common_file_name, common_file_size, common_file_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         full_file_name, full_file_size, full_file_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         data.version_code,
         data.channel,
         data.changelog,
         data.is_active,
-        data.agent_file_name,
-        data.agent_file_size,
-        data.agent_file_hash,
-        data.server_file_name,
-        data.server_file_size,
-        data.server_file_hash,
-        data.common_file_name,
-        data.common_file_size,
-        data.common_file_hash,
+        data.full_file_name,
+        data.full_file_size,
+        data.full_file_hash,
       ],
     );
 

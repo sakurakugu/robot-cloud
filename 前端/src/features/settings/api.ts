@@ -177,12 +177,10 @@ export function deleteAppVersion(id: number) {
 }
 
 /**
- * 上传机器人包（可分别或合并上传 agent / server / common）
+ * 上传机器人整包（full）
  */
 export function uploadRobotPackages(payload: {
-  agent?: { file: File; hash: string }
-  server?: { file: File; hash: string }
-  common?: { file: File; hash: string }
+  full: { file: File; hash: string }
   version: string
   versionCode: number
   channel: ReleaseChannel
@@ -195,18 +193,8 @@ export function uploadRobotPackages(payload: {
   if (payload.changelog) {
     formData.append('changelog', payload.changelog)
   }
-  if (payload.agent) {
-    formData.append('agent', payload.agent.file)
-    formData.append('agentHash', payload.agent.hash)
-  }
-  if (payload.server) {
-    formData.append('server', payload.server.file)
-    formData.append('serverHash', payload.server.hash)
-  }
-  if (payload.common) {
-    formData.append('common', payload.common.file)
-    formData.append('commonHash', payload.common.hash)
-  }
+  formData.append('full', payload.full.file)
+  formData.append('fullHash', payload.full.hash)
   return http.post<ApiResponse<RobotPackageInfo>>('/api/v1/robot-packages/upload', formData, {
     timeout: 0, // 文件上传不限超时
   })

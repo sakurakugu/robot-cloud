@@ -167,72 +167,26 @@
                 />
               </el-form-item>
 
-              <el-form-item label="robot-agent">
+              <el-form-item label="整包文件">
                 <el-upload
-                  ref="agentUploadRef"
-                  v-model:file-list="agentFileList"
+                  ref="fullUploadRef"
+                  v-model:file-list="fullFileList"
                   :auto-upload="false"
                   :show-file-list="true"
                   :limit="1"
-                  :on-change="(f: UploadFile) => handlePkgFileChange(f, 'agent')"
-                  :on-remove="() => handlePkgFileRemove('agent')"
-                  accept=".gz,.tgz"
+                  :on-change="(f: UploadFile) => handlePkgFileChange(f, 'full')"
+                  :on-remove="() => handlePkgFileRemove('full')"
+                  accept=".gz,.tgz,.tar"
                 >
                   <el-button plain>
                     选择文件
                   </el-button>
                 </el-upload>
                 <div
-                  v-if="pkgFiles.agent"
+                  v-if="pkgFiles.full"
                   class="selected-file"
                 >
-                  {{ pkgFiles.agent.name }}（{{ formatSize(pkgFiles.agent.size) }}）
-                </div>
-              </el-form-item>
-
-              <el-form-item label="robot-server">
-                <el-upload
-                  ref="serverUploadRef"
-                  v-model:file-list="serverFileList"
-                  :auto-upload="false"
-                  :show-file-list="true"
-                  :limit="1"
-                  :on-change="(f: UploadFile) => handlePkgFileChange(f, 'server')"
-                  :on-remove="() => handlePkgFileRemove('server')"
-                  accept=".gz,.tgz"
-                >
-                  <el-button plain>
-                    选择文件
-                  </el-button>
-                </el-upload>
-                <div
-                  v-if="pkgFiles.server"
-                  class="selected-file"
-                >
-                  {{ pkgFiles.server.name }}（{{ formatSize(pkgFiles.server.size) }}）
-                </div>
-              </el-form-item>
-
-              <el-form-item label="sparkrobot-common">
-                <el-upload
-                  ref="commonUploadRef"
-                  v-model:file-list="commonFileList"
-                  :auto-upload="false"
-                  :show-file-list="true"
-                  :limit="1"
-                  :on-change="(f: UploadFile) => handlePkgFileChange(f, 'common')"
-                  :on-remove="() => handlePkgFileRemove('common')"
-                  accept=".gz,.tgz"
-                >
-                  <el-button plain>
-                    选择文件
-                  </el-button>
-                </el-upload>
-                <div
-                  v-if="pkgFiles.common"
-                  class="selected-file"
-                >
-                  {{ pkgFiles.common.name }}（{{ formatSize(pkgFiles.common.size) }}）
+                  {{ pkgFiles.full.name }}（{{ formatSize(pkgFiles.full.size) }}）
                 </div>
               </el-form-item>
 
@@ -483,30 +437,17 @@
             </template>
           </el-table-column>
           <el-table-column
-            label="包含"
-            min-width="220"
+            label="内容"
+            min-width="180"
           >
             <template #default="{ row }">
               <el-tag
-                v-if="row.agent"
-                type="info"
-                style="margin-right: 4px"
-              >
-                robot-agent
-              </el-tag>
-              <el-tag
-                v-if="row.server"
-                type="info"
-                style="margin-right: 4px"
-              >
-                robot-server
-              </el-tag>
-              <el-tag
-                v-if="row.common"
+                v-if="row.full"
                 type="info"
               >
-                sparkrobot-common
+                full 整包
               </el-tag>
+              <span v-else>-</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -592,7 +533,7 @@ import { sha256 } from 'js-sha256'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 type QueryChannel = ReleaseChannel | 'all'
-type PkgKey = 'agent' | 'server' | 'common'
+type PkgKey = 'full'
 
 /* ================================================================
    APK 上传相关
@@ -631,18 +572,11 @@ const pkgForm = reactive({
   changelog: '',
 })
 
-const agentUploadRef = ref<UploadInstance>()
-const serverUploadRef = ref<UploadInstance>()
-const commonUploadRef = ref<UploadInstance>()
-
-const agentFileList = ref<UploadUserFile[]>([])
-const serverFileList = ref<UploadUserFile[]>([])
-const commonFileList = ref<UploadUserFile[]>([])
+const fullUploadRef = ref<UploadInstance>()
+const fullFileList = ref<UploadUserFile[]>([])
 
 const pkgFiles = reactive<Record<PkgKey, File | null>>({
-  agent: null,
-  server: null,
-  common: null,
+  full: null,
 })
 
 const pkgUploading = ref(false)
@@ -650,9 +584,7 @@ const pkgVersions = ref<RobotPackageInfo[]>([])
 const loadingPkgVersions = ref(false)
 const pkgQueryChannel = ref<QueryChannel>('all')
 
-const hasPkgFiles = computed(
-  () => pkgFiles.agent !== null || pkgFiles.server !== null || pkgFiles.common !== null
-)
+const hasPkgFiles = computed(() => pkgFiles.full !== null)
 
 /* ================================================================
    通用工具函数
@@ -700,7 +632,7 @@ const formatSize = (size: number) => {
 }
 
 const pkgTotalSize = (row: RobotPackageInfo): number =>
-  (row.agent?.fileSize ?? 0) + (row.server?.fileSize ?? 0) + (row.common?.fileSize ?? 0)
+  row.full?.fileSize ?? 0
 
 /* ================================================================
    版本码自动计算（APK & 机器狗包各自独立监听）
@@ -825,15 +757,9 @@ const resetPkgForm = () => {
   pkgForm.versionCode = 1
   pkgForm.channel = 'stable'
   pkgForm.changelog = ''
-  pkgFiles.agent = null
-  pkgFiles.server = null
-  pkgFiles.common = null
-  agentFileList.value = []
-  serverFileList.value = []
-  commonFileList.value = []
-  agentUploadRef.value?.clearFiles()
-  serverUploadRef.value?.clearFiles()
-  commonUploadRef.value?.clearFiles()
+  pkgFiles.full = null
+  fullFileList.value = []
+  fullUploadRef.value?.clearFiles()
 }
 
 const submitPkgUpload = async () => {
@@ -846,28 +772,26 @@ const submitPkgUpload = async () => {
     return
   }
   if (!hasPkgFiles.value) {
-    ElMessage.warning('请至少选择一个包文件')
+    ElMessage.warning('请选择 full 整包文件')
     return
   }
 
   try {
     pkgUploading.value = true
 
-    // 并行计算各文件 SHA-256 哈希
-    const [agentHash, serverHash, commonHash] = await Promise.all([
-      pkgFiles.agent ? fileToSha256(pkgFiles.agent) : Promise.resolve(null),
-      pkgFiles.server ? fileToSha256(pkgFiles.server) : Promise.resolve(null),
-      pkgFiles.common ? fileToSha256(pkgFiles.common) : Promise.resolve(null),
-    ])
+    const fullFile = pkgFiles.full
+    if (!fullFile) {
+      ElMessage.warning('请选择 full 整包文件')
+      return
+    }
+    const fullHash = await fileToSha256(fullFile)
 
     await uploadRobotPackages({
       version: pkgForm.version.trim(),
       versionCode: Number(pkgForm.versionCode),
       channel: pkgForm.channel,
       changelog: pkgForm.changelog.trim() || undefined,
-      agent: pkgFiles.agent && agentHash ? { file: pkgFiles.agent, hash: agentHash } : undefined,
-      server: pkgFiles.server && serverHash ? { file: pkgFiles.server, hash: serverHash } : undefined,
-      common: pkgFiles.common && commonHash ? { file: pkgFiles.common, hash: commonHash } : undefined,
+      full: { file: fullFile, hash: fullHash },
     })
 
     ElMessage.success('上传成功')

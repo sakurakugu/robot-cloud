@@ -187,9 +187,7 @@ export interface RobotPackageInfo {
   changelog: string | null
   isActive: boolean
   uploadedAt: string
-  agent: RobotPackageFileInfo | null
-  server: RobotPackageFileInfo | null
-  common: RobotPackageFileInfo | null
+  full: RobotPackageFileInfo | null
 }
 
 export interface ApiResponse<T = any> {

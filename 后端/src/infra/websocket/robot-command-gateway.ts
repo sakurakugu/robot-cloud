@@ -54,15 +54,11 @@ export type 机器人日志标记结果 = {
 };
 
 export type 机器人安装包下载路径 = {
-  agent?: string;
-  server?: string;
-  common?: string;
+  full?: string;
 };
 
 export type 机器人安装包哈希 = {
-  agent?: string;
-  server?: string;
-  common?: string;
+  full?: string;
 };
 
 export type 机器人安装包推送结果 = {

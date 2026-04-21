@@ -21,11 +21,7 @@ const upload = multer({
   },
 });
 
-const pkgFields = upload.fields([
-  { name: 'agent', maxCount: 1 },
-  { name: 'server', maxCount: 1 },
-  { name: 'common', maxCount: 1 },
-]);
+const pkgFields = upload.fields([{ name: 'full', maxCount: 1 }]);
 
 export function createRobotPackageRoutes(
   controller: 机器人包控制器,
@@ -33,7 +29,7 @@ export function createRobotPackageRoutes(
 ): Router {
   const router = Router();
 
-  // 上传包（multipart/form-data，字段名 agent / server / common，至少一个）
+  // 上传包（multipart/form-data，字段名 full）
   if (guards?.manage) {
     router.post('/upload', guards.manage, pkgFields, controller.upload);
   } else {
@@ -50,7 +46,7 @@ export function createRobotPackageRoutes(
   // 获取当前活跃版本信息（机器人和手机端下载前调用）
   router.get('/active', controller.getActive);
 
-  // 下载安装包文件（:type = agent | server | common，不需要鉴权，机器人直接 HTTP 下载）
+  // 下载安装包文件（:type = full，不需要鉴权，机器人直接 HTTP 下载）
   router.get('/download/:type', controller.download);
 
   // 回滚到指定版本

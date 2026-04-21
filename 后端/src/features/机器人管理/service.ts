@@ -472,7 +472,7 @@ export class 机器人服务 {
     const 机器人命令服务 = this.获取必需机器人命令服务();
     const releaseChannel = channel as 'stable' | 'beta';
     const pkgInfo = await this.packageService.getActive(releaseChannel);
-    if (!pkgInfo) {
+    if (!pkgInfo || !pkgInfo.full) {
       throw new Error(`没有可用的安装包（channel: ${channel}），请先在包管理页面上传安装包`);
     }
 
@@ -480,17 +480,9 @@ export class 机器人服务 {
     const downloadPaths: 机器人安装包下载路径 = {};
     const hashes: 机器人安装包哈希 = {};
 
-    if (pkgInfo.agent) {
-      downloadPaths.agent = `/api/v1/robot-packages/download/agent?channel=${channel}`;
-      hashes.agent = pkgInfo.agent.fileHash;
-    }
-    if (pkgInfo.server) {
-      downloadPaths.server = `/api/v1/robot-packages/download/server?channel=${channel}`;
-      hashes.server = pkgInfo.server.fileHash;
-    }
-    if (pkgInfo.common) {
-      downloadPaths.common = `/api/v1/robot-packages/download/common?channel=${channel}`;
-      hashes.common = pkgInfo.common.fileHash;
+    if (pkgInfo.full) {
+      downloadPaths.full = `/api/v1/robot-packages/download/full?channel=${channel}`;
+      hashes.full = pkgInfo.full.fileHash;
     }
 
     logger.info(`开始推送安装包到机器人 ${uuid}，包含: ${Object.keys(downloadPaths).join(', ')}`);
