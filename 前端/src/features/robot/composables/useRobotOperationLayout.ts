@@ -6,7 +6,8 @@ export type ControlLayout = Record<string, { x: number; y: number }>
 
 export const defaultRobotOperationControlLayout: ControlLayout = {
   chatToggle: { x: 92, y: 12 },
-  voiceRecord: { x: 92, y: 24 },
+  runtimeToggle: { x: 92, y: 24 },
+  voiceRecord: { x: 92, y: 36 },
   leftJoystick: { x: 15, y: 80 },
   rightJoystick: { x: 85, y: 80 },
   action_stand_up: { x: 34, y: 78 },

@@ -202,262 +202,6 @@
         {{ videoBadgeText }}
       </div>
 
-      <div
-        v-if="selectedUuid"
-        class="runtime-panel"
-      >
-        <div class="runtime-panel__header">
-          <div>
-            <div class="runtime-panel__title">
-              导航运行时
-            </div>
-            <div class="runtime-panel__subtitle">
-              建图、定位、导航、巡逻
-            </div>
-          </div>
-          <el-tag
-            size="small"
-            :type="runtimeControlsDisabled ? 'warning' : 'success'"
-          >
-            {{ runtimeControlsDisabled ? '云端未连' : '云端已连' }}
-          </el-tag>
-        </div>
-
-        <div class="runtime-panel__overview">
-          <div
-            v-for="item in runtimeOverviewItems"
-            :key="item.label"
-            class="runtime-chip"
-          >
-            <span class="runtime-chip__label">{{ item.label }}</span>
-            <el-tag
-              size="small"
-              :type="item.type"
-            >
-              {{ item.value }}
-            </el-tag>
-          </div>
-        </div>
-
-        <div class="runtime-panel__section">
-          <div class="runtime-panel__section-title">
-            地图与定位
-          </div>
-          <div class="runtime-panel__details">
-            <div
-              v-for="item in runtimeMapDetails"
-              :key="item.label"
-              class="runtime-detail"
-            >
-              <span class="runtime-detail__label">{{ item.label }}</span>
-              <span class="runtime-detail__value">{{ item.value }}</span>
-            </div>
-          </div>
-          <div class="runtime-panel__form">
-            <el-input
-              v-model="mapNameInput"
-              size="small"
-              placeholder="地图名称"
-            />
-            <div class="runtime-panel__actions">
-              <el-button
-                size="small"
-                type="primary"
-                :disabled="runtimeControlsDisabled"
-                @click="handleStartMapping"
-              >
-                开始建图
-              </el-button>
-              <el-button
-                size="small"
-                :disabled="runtimeControlsDisabled"
-                @click="handleStopMapping"
-              >
-                停止并保存
-              </el-button>
-              <el-button
-                size="small"
-                :disabled="runtimeControlsDisabled"
-                @click="handleLoadMap"
-              >
-                加载地图
-              </el-button>
-              <el-button
-                size="small"
-                :disabled="runtimeControlsDisabled"
-                @click="handleStartLocalization"
-              >
-                开始定位
-              </el-button>
-              <el-button
-                size="small"
-                :disabled="runtimeControlsDisabled"
-                @click="handleStopLocalization"
-              >
-                停止定位
-              </el-button>
-            </div>
-          </div>
-        </div>
-
-        <div class="runtime-panel__section">
-          <div class="runtime-panel__section-title">
-            定点导航
-          </div>
-          <div class="runtime-panel__details">
-            <div
-              v-for="item in runtimeNavigationDetails"
-              :key="item.label"
-              class="runtime-detail"
-            >
-              <span class="runtime-detail__label">{{ item.label }}</span>
-              <span class="runtime-detail__value">{{ item.value }}</span>
-            </div>
-          </div>
-          <div class="runtime-panel__goal-grid">
-            <el-input-number
-              v-model="navGoalX"
-              size="small"
-              :step="0.1"
-              controls-position="right"
-              placeholder="X"
-            />
-            <el-input-number
-              v-model="navGoalY"
-              size="small"
-              :step="0.1"
-              controls-position="right"
-              placeholder="Y"
-            />
-            <el-input-number
-              v-model="navGoalYaw"
-              size="small"
-              :step="0.1"
-              controls-position="right"
-              placeholder="Yaw"
-            />
-            <el-input
-              v-model="navGoalFrameId"
-              size="small"
-              placeholder="frame_id"
-            />
-            <el-input
-              v-model="navGoalMapName"
-              size="small"
-              placeholder="目标地图，可留空"
-            />
-          </div>
-          <div class="runtime-panel__actions">
-            <el-button
-              size="small"
-              type="primary"
-              :disabled="runtimeControlsDisabled"
-              @click="handleNavigateToGoal"
-            >
-              导航到点
-            </el-button>
-            <el-button
-              size="small"
-              :disabled="runtimeControlsDisabled"
-              @click="handleCancelNavigation"
-            >
-              取消导航
-            </el-button>
-          </div>
-        </div>
-
-        <div class="runtime-panel__section">
-          <div class="runtime-panel__section-title">
-            任务与巡逻
-          </div>
-          <div class="runtime-panel__details">
-            <div
-              v-for="item in runtimeTaskDetails"
-              :key="item.label"
-              class="runtime-detail"
-            >
-              <span class="runtime-detail__label">{{ item.label }}</span>
-              <span class="runtime-detail__value">{{ item.value }}</span>
-            </div>
-          </div>
-          <div class="runtime-panel__form">
-            <el-input
-              v-model="patrolTaskName"
-              size="small"
-              placeholder="巡逻任务名，可留空"
-            />
-            <el-input
-              v-model="patrolWaypointFile"
-              size="small"
-              placeholder="巡逻点位文件"
-            />
-            <div class="runtime-panel__actions">
-              <el-button
-                size="small"
-                type="primary"
-                :disabled="runtimeControlsDisabled"
-                @click="handleStartPatrol"
-              >
-                开始巡逻
-              </el-button>
-              <el-button
-                size="small"
-                :disabled="runtimeControlsDisabled"
-                @click="handleTaskControl('pause')"
-              >
-                暂停任务
-              </el-button>
-              <el-button
-                size="small"
-                :disabled="runtimeControlsDisabled"
-                @click="handleTaskControl('resume')"
-              >
-                恢复任务
-              </el-button>
-              <el-button
-                size="small"
-                :disabled="runtimeControlsDisabled"
-                @click="handleTaskControl('terminate')"
-              >
-                终止任务
-              </el-button>
-            </div>
-          </div>
-        </div>
-
-        <div class="runtime-panel__section">
-          <div class="runtime-panel__section-title">
-            运控桥
-          </div>
-          <div class="runtime-panel__details">
-            <div
-              v-for="item in runtimeDogBridgeDetails"
-              :key="item.label"
-              class="runtime-detail"
-            >
-              <span class="runtime-detail__label">{{ item.label }}</span>
-              <span class="runtime-detail__value">{{ item.value }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="runtime-panel__section">
-          <div class="runtime-panel__section-title">
-            雷达
-          </div>
-          <div class="runtime-panel__details">
-            <div
-              v-for="item in runtimeSensorDetails"
-              :key="item.label"
-              class="runtime-detail"
-            >
-              <span class="runtime-detail__label">{{ item.label }}</span>
-              <span class="runtime-detail__value">{{ item.value }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Floating Controls Layer -->
       <div
         ref="floatingLayerRef"
@@ -475,6 +219,21 @@
             :icon="ChatLineSquare"
             @click="onChatClick"
           />
+        </div>
+
+        <div
+          class="floating-item"
+          :style="getControlStyle('runtimeToggle')"
+          @pointerdown="startDrag('runtimeToggle', $event)"
+        >
+          <el-button
+            class="runtime-toggle-btn"
+            round
+            :disabled="!selectedUuid"
+            @click="onRuntimeClick"
+          >
+            导航、建图
+          </el-button>
         </div>
 
         <div
@@ -538,8 +297,8 @@
       :append-to-body="false"
       class="robot-agent-drawer"
     >
-      <div class="chat-drawer">
-        <div class="chat-drawer__header">
+      <div class="side-drawer">
+        <div class="side-drawer__header">
           <el-button
             link
             @click="closeChatPanel"
@@ -548,13 +307,286 @@
               <Back />
             </el-icon>
           </el-button>
-          <div class="chat-drawer__title">
+          <div class="side-drawer__title">
             对话
           </div>
-          <div class="chat-drawer__spacer" />
+          <div class="side-drawer__spacer" />
         </div>
-        <div class="chat-drawer__body">
+        <div class="side-drawer__body">
           <ChatView :robot-uuid="selectedUuid" />
+        </div>
+      </div>
+    </el-drawer>
+
+    <el-drawer
+      v-model="showRuntimePanel"
+      direction="rtl"
+      size="420px"
+      :with-header="false"
+      :append-to-body="false"
+      class="robot-runtime-drawer"
+    >
+      <div class="side-drawer">
+        <div class="side-drawer__header">
+          <el-button
+            link
+            @click="closeRuntimePanel"
+          >
+            <el-icon :size="20">
+              <Back />
+            </el-icon>
+          </el-button>
+          <div class="side-drawer__title">
+            导航运行时
+          </div>
+          <div class="side-drawer__spacer" />
+          <el-tag
+            size="small"
+            :type="runtimeControlsDisabled ? 'warning' : 'success'"
+          >
+            {{ runtimeControlsDisabled ? '云端未连' : '云端已连' }}
+          </el-tag>
+        </div>
+        <div class="side-drawer__body runtime-drawer__body">
+          <div class="runtime-panel runtime-panel--drawer">
+            <div class="runtime-panel__subtitle">
+              建图、定位、导航、巡逻
+            </div>
+
+            <div class="runtime-panel__overview">
+              <div
+                v-for="item in runtimeOverviewItems"
+                :key="item.label"
+                class="runtime-chip"
+              >
+                <span class="runtime-chip__label">{{ item.label }}</span>
+                <el-tag
+                  size="small"
+                  :type="item.type"
+                >
+                  {{ item.value }}
+                </el-tag>
+              </div>
+            </div>
+
+            <div class="runtime-panel__section">
+              <div class="runtime-panel__section-title">
+                地图与定位
+              </div>
+              <div class="runtime-panel__details">
+                <div
+                  v-for="item in runtimeMapDetails"
+                  :key="item.label"
+                  class="runtime-detail"
+                >
+                  <span class="runtime-detail__label">{{ item.label }}</span>
+                  <span class="runtime-detail__value">{{ item.value }}</span>
+                </div>
+              </div>
+              <div class="runtime-panel__form">
+                <el-input
+                  v-model="mapNameInput"
+                  size="small"
+                  placeholder="地图名称"
+                />
+                <div class="runtime-panel__actions">
+                  <el-button
+                    size="small"
+                    type="primary"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleStartMapping"
+                  >
+                    开始建图
+                  </el-button>
+                  <el-button
+                    size="small"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleStopMapping"
+                  >
+                    停止并保存
+                  </el-button>
+                  <el-button
+                    size="small"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleLoadMap"
+                  >
+                    加载地图
+                  </el-button>
+                  <el-button
+                    size="small"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleStartLocalization"
+                  >
+                    开始定位
+                  </el-button>
+                  <el-button
+                    size="small"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleStopLocalization"
+                  >
+                    停止定位
+                  </el-button>
+                </div>
+              </div>
+            </div>
+
+            <div class="runtime-panel__section">
+              <div class="runtime-panel__section-title">
+                定点导航
+              </div>
+              <div class="runtime-panel__details">
+                <div
+                  v-for="item in runtimeNavigationDetails"
+                  :key="item.label"
+                  class="runtime-detail"
+                >
+                  <span class="runtime-detail__label">{{ item.label }}</span>
+                  <span class="runtime-detail__value">{{ item.value }}</span>
+                </div>
+              </div>
+              <div class="runtime-panel__goal-grid">
+                <el-input-number
+                  v-model="navGoalX"
+                  size="small"
+                  :step="0.1"
+                  controls-position="right"
+                  placeholder="X"
+                />
+                <el-input-number
+                  v-model="navGoalY"
+                  size="small"
+                  :step="0.1"
+                  controls-position="right"
+                  placeholder="Y"
+                />
+                <el-input-number
+                  v-model="navGoalYaw"
+                  size="small"
+                  :step="0.1"
+                  controls-position="right"
+                  placeholder="Yaw"
+                />
+                <el-input
+                  v-model="navGoalFrameId"
+                  size="small"
+                  placeholder="frame_id"
+                />
+                <el-input
+                  v-model="navGoalMapName"
+                  size="small"
+                  placeholder="目标地图，可留空"
+                />
+              </div>
+              <div class="runtime-panel__actions">
+                <el-button
+                  size="small"
+                  type="primary"
+                  :disabled="runtimeControlsDisabled"
+                  @click="handleNavigateToGoal"
+                >
+                  导航到点
+                </el-button>
+                <el-button
+                  size="small"
+                  :disabled="runtimeControlsDisabled"
+                  @click="handleCancelNavigation"
+                >
+                  取消导航
+                </el-button>
+              </div>
+            </div>
+
+            <div class="runtime-panel__section">
+              <div class="runtime-panel__section-title">
+                任务与巡逻
+              </div>
+              <div class="runtime-panel__details">
+                <div
+                  v-for="item in runtimeTaskDetails"
+                  :key="item.label"
+                  class="runtime-detail"
+                >
+                  <span class="runtime-detail__label">{{ item.label }}</span>
+                  <span class="runtime-detail__value">{{ item.value }}</span>
+                </div>
+              </div>
+              <div class="runtime-panel__form">
+                <el-input
+                  v-model="patrolTaskName"
+                  size="small"
+                  placeholder="巡逻任务名，可留空"
+                />
+                <el-input
+                  v-model="patrolWaypointFile"
+                  size="small"
+                  placeholder="巡逻点位文件"
+                />
+                <div class="runtime-panel__actions">
+                  <el-button
+                    size="small"
+                    type="primary"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleStartPatrol"
+                  >
+                    开始巡逻
+                  </el-button>
+                  <el-button
+                    size="small"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleTaskControl('pause')"
+                  >
+                    暂停任务
+                  </el-button>
+                  <el-button
+                    size="small"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleTaskControl('resume')"
+                  >
+                    恢复任务
+                  </el-button>
+                  <el-button
+                    size="small"
+                    :disabled="runtimeControlsDisabled"
+                    @click="handleTaskControl('terminate')"
+                  >
+                    终止任务
+                  </el-button>
+                </div>
+              </div>
+            </div>
+
+            <div class="runtime-panel__section">
+              <div class="runtime-panel__section-title">
+                运控桥
+              </div>
+              <div class="runtime-panel__details">
+                <div
+                  v-for="item in runtimeDogBridgeDetails"
+                  :key="item.label"
+                  class="runtime-detail"
+                >
+                  <span class="runtime-detail__label">{{ item.label }}</span>
+                  <span class="runtime-detail__value">{{ item.value }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="runtime-panel__section">
+              <div class="runtime-panel__section-title">
+                雷达
+              </div>
+              <div class="runtime-panel__details">
+                <div
+                  v-for="item in runtimeSensorDetails"
+                  :key="item.label"
+                  class="runtime-detail"
+                >
+                  <span class="runtime-detail__label">{{ item.label }}</span>
+                  <span class="runtime-detail__value">{{ item.value }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </el-drawer>
@@ -595,8 +627,8 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { capturePhoto, createRobotVideoSession, releaseRobotVideoSession } from '../api'
-import type { RobotVideoSession } from '../types'
 import { useRobotStore } from '../store'
+import type { RobotVideoSession } from '../types'
 
 const props = defineProps<{ embedded?: boolean; robotUuid?: string }>()
 const router = useRouter()
@@ -621,6 +653,7 @@ const phoneBattery = ref<number | null>(null)
 const currentTime = ref('')
 const hasUpdate = ref(true)
 const showChatPanel = ref(false)
+const showRuntimePanel = ref(false)
 const floatingLayerRef = ref<HTMLDivElement | null>(null)
 const micEnabled = ref(true)
 const isCapturing = ref(false)
@@ -929,6 +962,7 @@ const emergencyStop = () => {
 }
 
 const openChatPanel = () => {
+  showRuntimePanel.value = false
   showChatPanel.value = true
 }
 
@@ -939,6 +973,24 @@ const closeChatPanel = () => {
 const onChatClick = () => {
   if (layoutEditMode.value) return
   openChatPanel()
+}
+
+const openRuntimePanel = () => {
+  showChatPanel.value = false
+  showRuntimePanel.value = true
+}
+
+const closeRuntimePanel = () => {
+  showRuntimePanel.value = false
+}
+
+const onRuntimeClick = () => {
+  if (layoutEditMode.value) return
+  if (!selectedUuid.value) {
+    ElMessage.warning('请先选择机器人')
+    return
+  }
+  openRuntimePanel()
 }
 
 const toggleMic = () => {
@@ -1537,6 +1589,7 @@ const removeMessageHandler = onMessage((message: WebSocketMessage) => {
 watch(selectedUuid, async (val) => {
   resetRuntimeState()
   if (!val) {
+    closeRuntimePanel()
     wsDisconnect()
     return
   }
@@ -1721,14 +1774,10 @@ html, body, #app {
 }
 
 .runtime-panel {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 4;
-  width: min(380px, calc(100vw - 32px));
-  max-height: calc(100% - 32px);
+  width: 100%;
+  min-height: 100%;
   overflow: auto;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid rgba(143, 162, 199, 0.22);
   border-radius: 18px;
   background:
@@ -1739,21 +1788,11 @@ html, body, #app {
   backdrop-filter: blur(14px);
 }
 
-.runtime-panel__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.runtime-panel__title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #f2f6ff;
+.runtime-panel--drawer {
+  min-width: 0;
 }
 
 .runtime-panel__subtitle {
-  margin-top: 4px;
   font-size: 12px;
   color: #92a1bf;
 }
@@ -1890,6 +1929,21 @@ html, body, #app {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+.runtime-toggle-btn {
+  min-width: 72px;
+  height: 44px;
+  padding: 0 16px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.runtime-toggle-btn:disabled {
+  background: rgba(0, 0, 0, 0.36);
+  color: rgba(255, 255, 255, 0.56);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
 .mic-toggle-btn :deep(.voice-record-btn) {
   width: 56px;
   height: 56px;
@@ -1934,7 +1988,7 @@ html, body, #app {
   flex-direction: column;
 }
 
-.chat-drawer {
+.side-drawer {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -1944,7 +1998,7 @@ html, body, #app {
   background: var(--el-bg-color);
 }
 
-.chat-drawer__header {
+.side-drawer__header {
   flex-shrink: 0;
   height: 48px;
   display: flex;
@@ -1955,30 +2009,33 @@ html, body, #app {
   background: var(--el-bg-color);
 }
 
-.chat-drawer__title {
+.side-drawer__title {
   font-size: 14px;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
 
-.chat-drawer__spacer {
+.side-drawer__spacer {
   flex: 1;
 }
 
-.chat-drawer__body {
+.side-drawer__body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
+.runtime-drawer__body {
+  overflow-y: auto;
+  padding: 12px;
+  background:
+    radial-gradient(circle at top right, rgba(67, 97, 238, 0.16), transparent 32%),
+    linear-gradient(180deg, #101724, #0a0f19);
+}
+
 @media (max-width: 900px) {
-  .runtime-panel {
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: 12px;
-    width: auto;
-    max-height: 52%;
+  :deep(.robot-runtime-drawer) {
+    width: min(100vw, 100%) !important;
   }
 
   .runtime-panel__overview,
