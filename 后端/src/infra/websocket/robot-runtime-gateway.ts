@@ -1,6 +1,8 @@
 import type { RobotRecord } from '../../features/机器人管理/types';
 import type {
+  ActionCommandMessage,
   MapCommandMessage,
+  ManualCommandMessage,
   MapResponseMessage,
   MapStateMessage,
   NavigationCommandMessage,
@@ -30,6 +32,8 @@ type 传感器状态数据 = SensorStateMessage['data'];
 type 导航命令数据 = NavigationCommandMessage['data'];
 type 地图命令数据 = MapCommandMessage['data'];
 type 巡逻命令数据 = PatrolCommandMessage['data'];
+type 手动命令数据 = ManualCommandMessage['data'];
+type 运行动作命令数据 = ActionCommandMessage['data'];
 type 导航响应数据 = NavigationResponseMessage['data'];
 type 地图响应数据 = MapResponseMessage['data'];
 type 巡逻响应数据 = PatrolResponseMessage['data'];
@@ -132,6 +136,14 @@ export class WebSocket机器人运行网关 {
 
   async handlePatrolCommand(robotId: string, data: 巡逻命令数据): Promise<void> {
     await this.转发运行时命令(robotId, 'patrol_command', data, 'PATROL_COMMAND_ERROR', '巡逻命令发送失败');
+  }
+
+  async handleManualCommand(robotId: string, data: 手动命令数据): Promise<void> {
+    await this.转发运行时命令(robotId, 'manual_command', data, 'MANUAL_COMMAND_ERROR', '手动控制命令发送失败');
+  }
+
+  async handleRuntimeActionCommand(robotId: string, data: 运行动作命令数据): Promise<void> {
+    await this.转发运行时命令(robotId, 'action_command', data, 'ACTION_COMMAND_ERROR', '动作命令发送失败');
   }
 
   handleRobotSummary(robotId: string, data: 机器人摘要数据): void {
@@ -273,7 +285,7 @@ export class WebSocket机器人运行网关 {
 
   private async 转发运行时命令(
     robotId: string,
-    type: 'navigation_command' | 'map_command' | 'patrol_command',
+    type: 'navigation_command' | 'map_command' | 'patrol_command' | 'manual_command' | 'action_command',
     data: Record<string, unknown>,
     errorCode: string,
     fallbackMessage: string,

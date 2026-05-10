@@ -100,6 +100,26 @@ export interface RuntimeCommandResponseData {
   [key: string]: unknown
 }
 
+export interface RuntimeManualCommandData {
+  command: 'start_session' | 'update_velocity' | 'stop' | 'emergency_stop'
+  mode?: 'move' | 'pose' | 'two_leg'
+  vx?: number
+  vy?: number
+  wz?: number
+  source?: string
+  session_id?: string
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+export interface RuntimeActionCommandData {
+  action_name?: string
+  action_id?: string
+  source?: string
+  parameters?: Record<string, unknown>
+  [key: string]: unknown
+}
+
 export type RuntimeStateData = Record<string, unknown>
 
 export type ServerMessage =

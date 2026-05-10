@@ -1,18 +1,18 @@
 import type {
-  ActionInputMessage,
   AudioChunkMessage,
   AudioControlMessage,
   AudioEndMessage,
   AudioStartMessage,
   ClientMessage,
-  ControlInputMessage,
   MapCommandMessage,
+  ManualCommandMessage,
   MapResponseMessage,
   MapStateMessage,
   NavigationCommandMessage,
   NavigationResponseMessage,
   NavigationStateMessage,
   PatrolCommandMessage,
+  ActionCommandMessage,
   PatrolResponseMessage,
   RobotRegisterMessage,
   RobotSummaryMessage,
@@ -48,11 +48,11 @@ export interface WebSocket消息路由器依赖 {
   处理心跳(robotId: string): void;
   处理状态(robotId: string, msg: StatusMessage): void;
   处理机器人注册(robotId: string, data: RobotRegisterMessage['data']): Promise<void>;
-  处理动作输入(robotId: string, action: string, parameters?: ActionInputMessage['data']['parameters']): Promise<void>;
-  处理控制输入(robotId: string, data: ControlInputMessage['data']): Promise<void>;
   处理导航命令(robotId: string, data: NavigationCommandMessage['data']): Promise<void>;
   处理地图命令(robotId: string, data: MapCommandMessage['data']): Promise<void>;
   处理巡逻命令(robotId: string, data: PatrolCommandMessage['data']): Promise<void>;
+  处理手动命令(robotId: string, data: ManualCommandMessage['data']): Promise<void>;
+  处理运行动作命令(robotId: string, data: ActionCommandMessage['data']): Promise<void>;
   处理SDK模式设置(robotId: string, data: SdkModeSetMessage['data']): Promise<void>;
   处理SDK模式获取(robotId: string): Promise<void>;
   处理SDK模式响应(robotId: string, data: SdkModeResponseMessage['data']): Promise<void>;
@@ -78,7 +78,6 @@ export class WebSocket消息路由器 {
     business: new Set([
       'text_input',
       'tts_input',
-      'action_input',
       'audio_control',
       'robot_register',
       'video_subscribe',
@@ -86,10 +85,11 @@ export class WebSocket消息路由器 {
       'video_frame',
       'heartbeat',
       'status',
-      'control_input',
       'navigation_command',
       'map_command',
       'patrol_command',
+      'manual_command',
+      'action_command',
       'robot_summary',
       'navigation_state',
       'map_state',
@@ -193,16 +193,6 @@ export class WebSocket消息路由器 {
           this.依赖.处理视频帧(robotId, 视频帧数据);
           break;
         }
-        case 'action_input':
-          await this.依赖.处理动作输入(
-            robotId,
-            (message as ActionInputMessage).data.action,
-            (message as ActionInputMessage).data.parameters,
-          );
-          break;
-        case 'control_input':
-          await this.依赖.处理控制输入(robotId, (message as ControlInputMessage).data);
-          break;
         case 'navigation_command':
           await this.依赖.处理导航命令(robotId, (message as NavigationCommandMessage).data);
           break;
@@ -211,6 +201,12 @@ export class WebSocket消息路由器 {
           break;
         case 'patrol_command':
           await this.依赖.处理巡逻命令(robotId, (message as PatrolCommandMessage).data);
+          break;
+        case 'manual_command':
+          await this.依赖.处理手动命令(robotId, (message as ManualCommandMessage).data);
+          break;
+        case 'action_command':
+          await this.依赖.处理运行动作命令(robotId, (message as ActionCommandMessage).data);
           break;
         case 'sdk_mode_set':
           await this.依赖.处理SDK模式设置(robotId, (message as SdkModeSetMessage).data);

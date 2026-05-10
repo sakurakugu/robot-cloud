@@ -215,27 +215,6 @@ export interface VideoFrameMessage extends BaseClientMessage {
   };
 }
 
-export interface ActionInputMessage extends BaseClientMessage {
-  type: 'action_input';
-  data: {
-    action: string;
-    parameters?: Record<string, unknown>;
-  };
-}
-
-export interface ControlInputMessage extends BaseClientMessage {
-  type: 'control_input';
-  data: {
-    command: string;
-    channel?: 'move' | 'look' | 'pose';
-    mode?: 'move' | 'pose';
-    x?: number;
-    y?: number;
-    speed?: number;
-    joystick?: number[];
-  };
-}
-
 export interface AudioControlMessage extends BaseClientMessage {
   type: 'audio_control';
   data: {
@@ -279,6 +258,32 @@ export interface MapCommandMessage extends BaseClientMessage {
 export interface PatrolCommandMessage extends BaseClientMessage {
   type: 'patrol_command';
   data: RuntimeCommandData;
+}
+
+export interface ManualCommandMessage extends BaseClientMessage {
+  type: 'manual_command';
+  data: RuntimeCommandData & {
+    command: 'start_session' | 'update_velocity' | 'stop' | 'emergency_stop';
+    mode?: 'move' | 'pose' | 'two_leg';
+    vx?: number | string;
+    vy?: number | string;
+    wz?: number | string;
+    source?: string;
+    session_id?: string;
+    sessionId?: string;
+    enabled?: boolean;
+  };
+}
+
+export interface ActionCommandMessage extends BaseClientMessage {
+  type: 'action_command';
+  data: RuntimeCommandData & {
+    action_name?: string;
+    source?: string;
+    action_id?: string;
+    actionId?: string;
+    parameters?: Record<string, unknown>;
+  };
 }
 
 export interface RuntimeCommandResponseData extends Record<string, unknown> {
@@ -414,12 +419,12 @@ export type ClientMessage =
   | VideoSubscribeMessage
   | VideoUnsubscribeMessage
   | VideoFrameMessage
-  | ActionInputMessage
-  | ControlInputMessage
   | AudioControlMessage
   | NavigationCommandMessage
   | MapCommandMessage
   | PatrolCommandMessage
+  | ManualCommandMessage
+  | ActionCommandMessage
   | SdkModeSetMessage
   | SdkModeGetMessage
   | SdkModeResponseMessage

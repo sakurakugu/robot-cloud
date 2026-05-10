@@ -8,7 +8,6 @@ import { WebSocket连接生命周期管理器 } from './connection-lifecycle-man
 import { WebSocket连接注册表 } from './connection-registry';
 import { WebSocket对话网关 } from './conversation-gateway';
 import { WebSocket心跳管理器 } from './heartbeat-manager';
-import { WebSocket手动命令网关 } from './manual-command-gateway';
 import { WebSocket消息路由器 } from './message-router';
 import {
   机器人命令网关,
@@ -33,7 +32,6 @@ class WebSocket服务 {
   private readonly 连接生命周期管理器: WebSocket连接生命周期管理器;
   private readonly 音频路由网关: 音频路由网关;
   private readonly 对话网关: WebSocket对话网关;
-  private readonly 手动命令网关: WebSocket手动命令网关;
   private readonly 消息路由器: WebSocket消息路由器;
   private readonly 机器人运行网关: WebSocket机器人运行网关;
   private readonly SDK模式网关: WebSocketSDK模式网关;
@@ -81,12 +79,6 @@ class WebSocket服务 {
       写入动作日志: this.运行依赖.写入动作日志.bind(this.运行依赖),
       写入对话记录: this.运行依赖.写入对话记录.bind(this.运行依赖),
     });
-    this.手动命令网关 = new WebSocket手动命令网关({
-      发送到机器人: this.sendToRobot.bind(this),
-      发送错误: this.sendError.bind(this),
-      广播消息: this.连接注册表.广播到机器人和UI.bind(this.连接注册表),
-      写入动作日志: this.运行依赖.写入动作日志.bind(this.运行依赖),
-    });
     this.机器人运行网关 = new WebSocket机器人运行网关({
       获取机器人记录: this.运行依赖.获取机器人记录.bind(this.运行依赖),
       更新机器人记录: this.运行依赖.更新机器人记录.bind(this.运行依赖),
@@ -115,18 +107,28 @@ class WebSocket服务 {
       发送错误: this.sendError.bind(this),
       处理文本输入: this.对话网关.handleTextInput.bind(this.对话网关),
       处理TTS输入: this.对话网关.handleTTSInput.bind(this.对话网关),
-      处理音频控制: this.手动命令网关.handleAudioControl.bind(this.手动命令网关),
+      处理音频控制: async (robotId, data) => {
+        const sent = this.sendToRobot(robotId, {
+          type: 'audio_control',
+          robotId,
+          timestamp: Date.now(),
+          data: { enabled: Boolean(data?.enabled), source: data?.source ?? 'ui' },
+        }, 'business')
+        if (!sent) {
+          this.sendError(robotId, 'ROBOT_OFFLINE', '机器人未连接', 'business')
+        }
+      },
       处理音频开始: this.音频会话管理器.handleAudioStart.bind(this.音频会话管理器),
       处理音频块: this.音频会话管理器.handleAudioChunk.bind(this.音频会话管理器),
       处理音频结束: this.音频会话管理器.handleAudioEnd.bind(this.音频会话管理器),
       处理心跳: this.机器人运行网关.handleHeartbeat.bind(this.机器人运行网关),
       处理状态: this.机器人运行网关.handleStatus.bind(this.机器人运行网关),
       处理机器人注册: this.机器人运行网关.handleRobotRegister.bind(this.机器人运行网关),
-      处理动作输入: this.手动命令网关.handleActionInput.bind(this.手动命令网关),
-      处理控制输入: this.手动命令网关.handleControlInput.bind(this.手动命令网关),
       处理导航命令: this.机器人运行网关.handleNavigationCommand.bind(this.机器人运行网关),
       处理地图命令: this.机器人运行网关.handleMapCommand.bind(this.机器人运行网关),
       处理巡逻命令: this.机器人运行网关.handlePatrolCommand.bind(this.机器人运行网关),
+      处理手动命令: this.机器人运行网关.handleManualCommand.bind(this.机器人运行网关),
+      处理运行动作命令: this.机器人运行网关.handleRuntimeActionCommand.bind(this.机器人运行网关),
       处理SDK模式设置: this.SDK模式网关.handleSdkModeSet.bind(this.SDK模式网关),
       处理SDK模式获取: this.SDK模式网关.handleSdkModeGet.bind(this.SDK模式网关),
       处理SDK模式响应: this.SDK模式网关.handleSdkModeResponse.bind(this.SDK模式网关),

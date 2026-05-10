@@ -356,12 +356,13 @@ const sendMessage = (target: 'ai' | 'robot') => {
     if (isConnected.value) {
       // 发送动作消息到后端（不发送TTS）
       wsSendMessage({
-        type: 'action_input',
+        type: 'action_command',
         robotId: robotId.value,
         timestamp,
         data: {
-          action: actionMatch.action,
+          action_name: actionMatch.action,
           parameters: actionMatch.parameters,
+          source: 'cloud-conversation',
         },
       })
 

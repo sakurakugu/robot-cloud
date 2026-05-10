@@ -64,8 +64,6 @@ export type ClientMessage =
   | TTSInputMessage
   | VideoSubscribeMessage
   | VideoUnsubscribeMessage
-  | ActionInputMessage
-  | ControlInputMessage
   | AudioControlMessage
   | SdkModeSetMessage
   | SdkModeGetMessage
@@ -195,31 +193,6 @@ export interface VideoUnsubscribeMessage {
   timestamp?: number;
 }
 
-export interface ActionInputMessage {
-  type: 'action_input';
-  robotId: string;
-  timestamp: number;
-  data: {
-    action: string;
-    parameters?: Record<string, unknown>;
-  };
-}
-
-export interface ControlInputMessage {
-  type: 'control_input';
-  robotId: string;
-  timestamp: number;
-  data: {
-    command: string;
-    channel?: 'move' | 'look' | 'pose';
-    mode?: 'move' | 'pose';
-    x?: number;
-    y?: number;
-    speed?: number;
-    joystick?: number[];
-  };
-}
-
 export interface AudioControlMessage {
   type: 'audio_control';
   robotId: string;
@@ -237,7 +210,7 @@ export type ServerMessage =
   | AudioStreamChunkMessage
   | AudioStreamEndMessage
   | ActionCommandMessage
-  | ControlCommandMessage
+  | DeviceCommandMessage
   | TextResponseMessage
   | VisionStatusMessage
   | VideoFrameMessage
@@ -299,17 +272,15 @@ export interface ActionCommandMessage {
   data: ActionCommand;
 }
 
-export interface ControlCommandMessage {
-  type: 'control_command';
+export interface DeviceCommandMessage {
+  type: 'device_command';
   robotId: string;
   timestamp: number;
   data: {
-    command: 'joystick' | 'joystick_stop' | 'estop';
-    channel?: 'move' | 'look' | 'pose';
-    mode?: 'move' | 'pose';
-    x?: number;
-    y?: number;
-    speed?: number;
+    command: 'mic_control' | 'sdk_mode' | 'switch_control_mode' | 'camera_capture';
+    enabled?: boolean;
+    mode?: 'move' | 'pose' | 'two_leg';
+    requestId?: string;
   };
 }
 

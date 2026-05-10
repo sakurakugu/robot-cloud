@@ -8,14 +8,16 @@ export function useRobotOperationJoystick(options: {
   robotId: Ref<string>
   layoutEditMode: Ref<boolean>
   sendMessage: (message: {
-    type: 'control_input'
+    type: 'manual_command'
     robotId: string
     timestamp: number
     data: {
-      command: 'joystick'
+      command: 'update_velocity'
       mode: EffectiveControlMode
-      speed: number
-      joystick: [number, number, number, number]
+      vx: number
+      vy: number
+      wz: number
+      source: string
     }
   }) => void
 }) {
@@ -39,15 +41,37 @@ export function useRobotOperationJoystick(options: {
       return
     }
 
+    const speedRatio = Math.max(0, Math.min(1, speed.value / 30))
+    const [axis0, axis1, axis2] = joystickAxes.value
+    const velocity = effectiveMode === 'two_leg'
+      ? {
+          vx: axis0 * 3.0 * speedRatio,
+          vy: 0,
+          wz: axis1 * 1.0 * speedRatio,
+        }
+      : effectiveMode === 'pose'
+        ? {
+            vx: 0,
+            vy: 0,
+            wz: 0,
+          }
+        : {
+            vx: axis0 * 3.0 * speedRatio,
+            vy: axis1 * 1.0 * speedRatio,
+            wz: axis2 * 3.0 * speedRatio,
+          }
+
     options.sendMessage({
-      type: 'control_input',
+      type: 'manual_command',
       robotId: options.robotId.value,
       timestamp: Date.now(),
       data: {
-        command: 'joystick',
+        command: 'update_velocity',
         mode: effectiveMode,
-        speed: speed.value,
-        joystick: joystickAxes.value,
+        vx: velocity.vx,
+        vy: velocity.vy,
+        wz: velocity.wz,
+        source: 'cloud-ui',
       },
     })
   }

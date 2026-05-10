@@ -67,11 +67,11 @@
               size="small"
               text
             >
-              速度: {{ speed }}
+              {{ speedLabel }}: {{ speed }}
             </el-button>
           </template>
           <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px;">
-            <span style="white-space: nowrap;">速度</span>
+            <span style="white-space: nowrap;">{{ speedLabel }}</span>
             <el-slider
               v-model="speed"
               :min="1"
@@ -759,6 +759,7 @@ const videoBadgeText = computed(() => {
 })
 
 const runtimeControlsDisabled = computed(() => !selectedUuid.value || !isConnected.value)
+const speedLabel = computed(() => controlMode.value === 'pose' ? '强度' : '速度')
 
 const lidarRuntimeState = computed(() => {
   const lidar = sensorState.value?.lidar
@@ -954,10 +955,10 @@ const emergencyStop = () => {
   }
   ElMessage.error('触发急停！')
   wsSendMessage({
-    type: 'control_input',
+    type: 'manual_command',
     robotId: robotId.value,
     timestamp: Date.now(),
-    data: { command: 'estop' },
+    data: { command: 'emergency_stop', enabled: true, source: 'cloud-ui' },
   })
 }
 
@@ -1019,19 +1020,19 @@ const sendAction = (action: string) => {
     twoLegStandActive.value = !twoLegStandActive.value
     ElMessage.success(twoLegStandActive.value ? '进入双腿站立' : '退出双腿站立')
     wsSendMessage({
-      type: 'action_input',
+      type: 'action_command',
       robotId: robotId.value,
       timestamp: Date.now(),
-      data: { action: nextAction },
+      data: { action_name: nextAction, source: 'cloud-ui' },
     })
     return
   }
   ElMessage.success(`发送动作: ${action}`)
   wsSendMessage({
-    type: 'action_input',
+    type: 'action_command',
     robotId: robotId.value,
     timestamp: Date.now(),
-    data: { action },
+    data: { action_name: action, source: 'cloud-ui' },
   })
 }
 

@@ -300,29 +300,6 @@ describe('WebSocket服务', () => {
     expect(机器人仓库.getRobot).toHaveBeenCalledWith('robot-1');
   });
 
-  it('处理动作输入时应通过对话仓库写入动作日志', async () => {
-    const 对话仓库 = 创建对话仓库Mock();
-
-    const service = new WebSocket服务();
-    service.配置依赖({ 对话仓库 });
-    (service as any).sendToRobot = jest.fn();
-    (service as any).broadcastMessage = jest.fn();
-
-    await (service as any).手动命令网关.handleActionInput('robot-1', 'sit_down', { speed: 1 });
-
-    expect(对话仓库.createActionLog).toHaveBeenCalledWith({
-      robot_id: 'robot-1',
-      conversation_id: 'generated-robot-id',
-      action_name: 'sit_down',
-      parameters: { speed: 1 },
-      status: 'success',
-      result_detail: {
-        source: 'manual_action_input',
-        safetyChecked: true,
-      },
-    });
-  });
-
   it('写入对话记录时应通过对话仓库持久化', async () => {
     const 对话仓库 = 创建对话仓库Mock();
 
