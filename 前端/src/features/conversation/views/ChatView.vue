@@ -267,25 +267,17 @@ const visionStatus = ref<VisionStatus | null>(null)
 
 let requestTimestamps = new Map<number, number>()
 
-const ttsVoice = ref('zh-CN-XiaoxiaoNeural')
+const ttsVoice = ref('Cherry')
 const ttsSpeed = ref(0)
 const ttsPitch = ref(0)
 const ttsVolume = ref(0)
-// 可用的TTS声音列表（保留供未来使用）
-// const voices = [
-//   { label: '晓晓(女)', value: 'zh-CN-XiaoxiaoNeural' },
-//   { label: '晓伊(女)', value: 'zh-CN-XiaoyiNeural' },
-//   { label: '云健(男)', value: 'zh-CN-YunjianNeural' },
-//   { label: '云皓(男)', value: 'zh-CN-YunhaoNeural' },
-//   { label: '云熙(男)', value: 'zh-CN-YunxiNeural' },
-//   { label: '云扬(男)', value: 'zh-CN-YunyangNeural' },
-// ]
 
 const getTTSOptions = () => ({
   voice: ttsVoice.value,
   speed: ttsSpeed.value,
   pitch: ttsPitch.value,
   volume: ttsVolume.value,
+  stream: false,
 })
 
 const { handleAudioResponse, handlePlayClick, requestTTS } = useChatAudio({

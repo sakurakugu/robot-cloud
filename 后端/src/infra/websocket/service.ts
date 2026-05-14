@@ -72,6 +72,7 @@ class WebSocket服务 {
       获取音频路由配置: this.音频路由网关.getAudioRouteConfig.bind(this.音频路由网关),
       发送音频消息: this.音频路由网关.sendAudioMessageByRoute.bind(this.音频路由网关),
       是否发送最终音频响应: this.音频路由网关.shouldSendFinalAudioResponse.bind(this.音频路由网关),
+      发送到网页UI: this.连接注册表.发送到网页UI.bind(this.连接注册表),
       发送到机器人: this.sendToRobot.bind(this),
       广播消息: this.连接注册表.广播到机器人和UI.bind(this.连接注册表),
       发送到UI: this.连接注册表.发送到UI.bind(this.连接注册表),

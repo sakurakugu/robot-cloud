@@ -12,12 +12,6 @@ type 机器人仓库Mock = {
   getRobot: jest.Mock;
 };
 
-type 机器人控制桥接Mock = {
-  testRobotConnection: jest.Mock;
-  connectRobot: jest.Mock;
-  restartMotionControl: jest.Mock;
-};
-
 type 执行服务Mock = {
   startExecution: jest.Mock;
   pauseExecution: jest.Mock;
@@ -44,9 +38,6 @@ type 项目机器人服务Mock = {
   getProjectRobotsConfig: jest.Mock;
   updateProjectRobot: jest.Mock;
   deleteProjectRobot: jest.Mock;
-  testRobotConnection: jest.Mock;
-  connectRobot: jest.Mock;
-  restartMotionControl: jest.Mock;
 };
 
 type 项目文件资源服务Mock = {
@@ -86,7 +77,6 @@ type 时间轴内容服务Mock = {
 
 type 创建编舞服务选项 = {
   机器人仓库?: 机器人仓库Mock;
-  机器人控制桥接?: 机器人控制桥接Mock;
   执行消息网关?: 执行消息网关Mock;
   执行服务?: 执行服务Mock;
   时间轴编译器?: 时间轴编译器Mock;
@@ -108,14 +98,6 @@ function 创建测试环境(): 测试环境 {
 function 创建机器人仓库Mock(): 机器人仓库Mock {
   return {
     getRobot: jest.fn(),
-  };
-}
-
-function 创建机器人控制桥接Mock(): 机器人控制桥接Mock {
-  return {
-    testRobotConnection: jest.fn(),
-    connectRobot: jest.fn(),
-    restartMotionControl: jest.fn(),
   };
 }
 
@@ -152,9 +134,6 @@ function 创建项目机器人服务Mock(): 项目机器人服务Mock {
     getProjectRobotsConfig: jest.fn(),
     updateProjectRobot: jest.fn(),
     deleteProjectRobot: jest.fn(),
-    testRobotConnection: jest.fn(),
-    connectRobot: jest.fn(),
-    restartMotionControl: jest.fn(),
   };
 }
 
@@ -217,9 +196,6 @@ async function 创建编舞服务(
   jest.doMock('uuid', () => ({
     v7: jest.fn(() => uuidValues.shift() || '92345678-1234-1234-1234-123456789abc'),
   }));
-  jest.doMock('../../core/services/python-executor', () => ({
-    PythonExecutor: jest.fn().mockImplementation(() => ({})),
-  }));
   jest.doMock('../../core/logger', () => ({
     logger: {
       info: jest.fn(),
@@ -232,7 +208,6 @@ async function 创建编舞服务(
   const { 编舞服务 } = await import('./service');
   const {
     机器人仓库 = 创建机器人仓库Mock(),
-    机器人控制桥接,
     执行消息网关 = 创建执行消息网关Mock(),
     执行服务,
     时间轴编译器,
@@ -244,7 +219,6 @@ async function 创建编舞服务(
 
   return new 编舞服务({
     机器人仓库: 机器人仓库 as any,
-    机器人控制桥接: 机器人控制桥接 as any,
     执行消息网关: 执行消息网关 as any,
     执行服务: 执行服务 as any,
     时间轴编译器: 时间轴编译器 as any,
@@ -517,79 +491,6 @@ describe('编舞服务', () => {
     expect(fs.existsSync(path.join(导入项目.folder_path, 'scripts', 'run.py'))).toBe(true);
   });
 
-  it('连接机器人应通过桥接执行并更新在线状态', async () => {
-    const 机器人控制桥接 = 创建机器人控制桥接Mock();
-    机器人控制桥接.connectRobot.mockResolvedValue({
-      success: true,
-      connected: true,
-      message: 'SSH 连接成功；自动配置完成',
-      mode: 'wifi',
-    });
-
-    const 服务 = await 创建编舞服务(环境, {
-      机器人仓库: 创建机器人仓库Mock(),
-      机器人控制桥接,
-    });
-    await 服务.初始化();
-    const 项目 = await 服务.createProject({
-      name: '连接项目',
-    });
-
-    const 机器人 = await 服务.addRobotToProjectDirect(项目.uuid, {
-      name: '待连接机器人',
-      robot_ip: '192.168.1.20',
-      local_ip: '192.168.1.2',
-      local_port: 9000,
-    });
-
-    const 结果 = await 服务.connectRobot(项目.uuid, 机器人.uuid);
-
-    expect(机器人控制桥接.connectRobot).toHaveBeenCalledWith(
-      expect.objectContaining({
-        uuid: 机器人.uuid,
-        name: '待连接机器人',
-        robot_ip: '192.168.1.20',
-      }),
-    );
-    expect(结果.mode).toBe('wifi');
-
-    const 配置列表 = await 服务.getProjectRobotsConfig(项目.uuid);
-    expect(配置列表[0].status).toBe('online');
-  });
-
-  it('连接失败时应通过桥接结果回写离线状态', async () => {
-    const 机器人控制桥接 = 创建机器人控制桥接Mock();
-    机器人控制桥接.connectRobot.mockResolvedValue({
-      success: false,
-      connected: false,
-      message: 'SSH 连接失败',
-    });
-
-    const 服务 = await 创建编舞服务(环境, {
-      机器人仓库: 创建机器人仓库Mock(),
-      机器人控制桥接,
-    });
-    await 服务.初始化();
-    const 项目 = await 服务.createProject({
-      name: '连接失败项目',
-    });
-
-    const 机器人 = await 服务.addRobotToProjectDirect(项目.uuid, {
-      name: '待连接机器人',
-      robot_ip: '192.168.1.20',
-      local_ip: '192.168.1.2',
-      local_port: 9000,
-    });
-
-    await 服务.updateProjectRobot(项目.uuid, 机器人.uuid, { status: 'online' });
-
-    const 结果 = await 服务.connectRobot(项目.uuid, 机器人.uuid);
-    expect(结果.success).toBe(false);
-
-    const 配置列表 = await 服务.getProjectRobotsConfig(项目.uuid);
-    expect(配置列表[0].status).toBe('offline');
-  });
-
   it('执行编舞应编译计划后委托执行服务', async () => {
     const 执行服务 = 创建执行服务Mock();
     执行服务.startExecution.mockReturnValue({
@@ -735,9 +636,6 @@ describe('编舞服务', () => {
     jest.doMock('uuid', () => ({
       v7: jest.fn(() => '12345678-1234-1234-1234-123456789abc'),
     }));
-    jest.doMock('../../core/services/python-executor', () => ({
-      PythonExecutor: jest.fn().mockImplementation(() => ({})),
-    }));
     jest.doMock('../../core/logger', () => ({
       logger: {
         info: jest.fn(),
@@ -757,11 +655,6 @@ describe('编舞服务', () => {
   it('项目机器人相关接口应委托独立项目机器人服务', async () => {
     const 项目机器人服务 = 创建项目机器人服务Mock();
     项目机器人服务.getProjectRobots.mockResolvedValue([{ uuid: 'robot-1' }]);
-    项目机器人服务.connectRobot.mockResolvedValue({
-      success: true,
-      connected: true,
-      message: 'ok',
-    });
 
     const 服务 = await 创建编舞服务(环境, {
       机器人仓库: 创建机器人仓库Mock(),
@@ -770,10 +663,6 @@ describe('编舞服务', () => {
 
     expect(await 服务.getProjectRobots('project-1')).toEqual([{ uuid: 'robot-1' }]);
     expect(项目机器人服务.getProjectRobots).toHaveBeenCalledWith('project-1');
-
-    const 结果 = await 服务.connectRobot('project-1', 'robot-1');
-    expect(结果.success).toBe(true);
-    expect(项目机器人服务.connectRobot).toHaveBeenCalledWith('project-1', 'robot-1');
   });
 
   it('文件与资源相关接口应委托独立项目文件资源服务', async () => {

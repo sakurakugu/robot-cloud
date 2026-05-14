@@ -24,4 +24,31 @@ export interface AIConfig {
         hasApiSecret: boolean;
         apiSecretLength: number;
     };
+    aliyunTts: {
+        hasApiKey: boolean;
+        apiKeyLength: number;
+        model: string;
+        voice: string;
+        responseFormat: 'pcm' | 'wav' | 'mp3' | 'opus';
+        sampleRate: 8000 | 16000 | 24000 | 48000;
+        instructions: string;
+        optimizeInstructions: boolean;
+    };
+}
+
+export interface UpdateAIConfigDTO {
+    xunfeiAsr?: {
+        appId?: string;
+        apiKey?: string;
+        apiSecret?: string;
+    };
+    aliyunTts?: {
+        apiKey?: string;
+        model?: string;
+        voice?: string;
+        responseFormat?: 'pcm' | 'wav' | 'mp3' | 'opus';
+        sampleRate?: 8000 | 16000 | 24000 | 48000;
+        instructions?: string;
+        optimizeInstructions?: boolean;
+    };
 }

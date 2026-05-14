@@ -1,7 +1,5 @@
-import { spawn } from 'child_process';
 import net from 'net';
-import path from 'path';
-import { v7 as uuidv7, validate as validUUID } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 import 配置 from '../../infra/config';
 import { logger } from '../../infra/logger';
 import type {
@@ -40,14 +38,11 @@ type 机器人包查询服务 = Pick<机器人包服务, 'getActive'>;
  * 机器人服务
  */
 export class 机器人服务 {
-  private pythonCommand: string;
   private 机器人命令服务?: 机器人命令服务接口;
   private packageService?: 机器人包查询服务;
   private readonly 视频会话租约管理器: 视频会话租约管理器;
 
   constructor(private repository: RobotRepository, 依赖: 机器人服务依赖 = {}) {
-    // Windows 上通常是 python，Linux/Mac 上通常是 python3
-    this.pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     this.机器人命令服务 = 依赖.机器人命令服务;
     this.packageService = 依赖.机器人包服务;
     this.视频会话租约管理器 = new 视频会话租约管理器();
@@ -146,48 +141,7 @@ export class 机器人服务 {
    */
   async 创建机器人(data: CreateRobotDto): Promise<RobotResponse> {
     const ip = data.ip || null;
-    let uuid: string | null = null;
-
-    // TODO: 目前这个改到了 云端，因此无法通过ssh连接机器狗了，需在手机端或其他端实现或者直接删除
-    // 如果提供了 IP，尝试 SSH 初始化
-    if (ip) {
-      const pythonScript = path.resolve(__dirname, '../../core/utils/ssh_helper.py');
-
-      const canSsh = await this.测试SSH连接(pythonScript, ip);
-      if (!canSsh) {
-        throw new Error(`无法通过SSH连接到 ${ip}`);
-      }
-
-      // 读取或生成 UUID
-      const remoteInitCmd = [
-        'mkdir -p /home/firefly/sparkrobot/robot-agent',
-        'mkdir -p /home/firefly/sparkrobot/config',
-        'if [ -f /home/firefly/sparkrobot/config/config.toml ]; then grep "^uuid" /home/firefly/sparkrobot/config/config.toml | cut -d"=" -f2 | tr -d \' \"\' | xargs; fi',
-      ].join(' && ');
-
-      try {
-        const remoteUuid = await this.执行SSH命令(pythonScript, ip, remoteInitCmd);
-        if (remoteUuid && validUUID(remoteUuid)) {
-          uuid = remoteUuid;
-          logger.info(`从机器人读取到UUID: ${uuid}`);
-        }
-      } catch {
-        logger.warn('读取远程UUID失败，将生成新的');
-      }
-
-      if (!uuid) {
-        uuid = uuidv7();
-        logger.info(`生成新UUID: ${uuid}`);
-
-        const configToml = `# 火花机器人配置文件\n# 生成于 ${formatTimestamp()}\n\nuuid = "${uuid}"\n`;
-        await this.写入SSH文件(pythonScript, ip, '/home/firefly/sparkrobot/config/config.toml', configToml);
-      }
-
-      logger.info(`机器人 ${ip} 初始化完成，UUID: ${uuid}`);
-    }
-
-    // 创建数据库记录
-    const finalUuid = uuid || uuidv7();
+    const finalUuid = uuidv7();
     await this.repository.upsertRobot({
       uuid: finalUuid,
       name: data.name || null,
@@ -197,7 +151,7 @@ export class 机器人服务 {
       sn: data.sn || null,
       tags: data.tags ? JSON.stringify(data.tags) : null, // SQLite 不支持JSON数组，存为 JSON 字符串
       status: 'offline',
-      registered_at: new Date().toISOString(),
+      registered_at: formatTimestamp(),
     });
 
     const result = await this.获取机器人(finalUuid);
@@ -255,20 +209,8 @@ export class 机器人服务 {
       throw new Error('缺少机器人IP');
     }
 
-    // Ping 测试
-    const pingOk = await new Promise<boolean>((resolve) => {
-      const p = spawn('ping', ['-c', '1', '-W', '2', robot.ip!]);
-      p.on('error', () => resolve(false));
-      p.on('close', (code) => resolve(code === 0));
-    });
-
-    if (!pingOk) {
-      return { connected: false, message: `网络不可达: ${robot.ip}` };
-    }
-
-    // SSH 端口测试
-    const sshReachable = await new Promise<boolean>((resolve) => {
-      const socket = net.createConnection({ host: robot.ip!, port: 22 });
+    const portReachable = await new Promise<boolean>((resolve) => {
+      const socket = net.createConnection({ host: robot.ip!, port: 8080 });
       const timer = setTimeout(() => {
         socket.destroy();
         resolve(false);
@@ -285,107 +227,19 @@ export class 机器人服务 {
       });
     });
 
-    if (sshReachable) {
-      return { connected: true, message: `SSH端口可达: ${robot.ip}` };
+    if (portReachable) {
+      return { connected: true, message: `配置端口可达: ${robot.ip}:8080` };
     }
 
-    return { connected: false, message: `SSH端口不可达: ${robot.ip}` };
-  }
-
-  // ==================== SSH 辅助方法 ====================
-
-  private async 测试SSH连接(pythonScript: string, ip: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      const p = spawn(this.pythonCommand, [pythonScript, 'test', ip]);
-      let stdout = '';
-      p.stdout.on('data', (d) => { stdout += d.toString(); });
-      p.on('error', () => resolve(false));
-      p.on('close', (code) => {
-        if (code === 0) {
-          try {
-            const result = JSON.parse(stdout);
-            resolve(result.success && result.connected);
-          } catch {
-            resolve(false);
-          }
-        } else {
-          resolve(false);
-        }
-      });
-    });
-  }
-
-  private async 执行SSH命令(pythonScript: string, ip: string, command: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const p = spawn(this.pythonCommand, [pythonScript, 'exec', ip, command]);
-      let stdout = '';
-      p.stdout.on('data', (d) => { stdout += d.toString(); });
-      p.on('error', (e) => reject(e));
-      p.on('close', (code) => {
-        if (code === 0) {
-          try {
-            const result = JSON.parse(stdout);
-            if (result.success) {
-              resolve(result.output?.trim() || '');
-            } else {
-              reject(new Error(result.error || '远程命令执行失败'));
-            }
-          } catch {
-            reject(new Error('解析输出失败'));
-          }
-        } else {
-          reject(new Error('远程命令执行失败'));
-        }
-      });
-    });
-  }
-
-  private async 写入SSH文件(pythonScript: string, ip: string, remotePath: string, content: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      const p = spawn(this.pythonCommand, [pythonScript, 'write', ip, remotePath, content]);
-      let stdout = '';
-      p.stdout.on('data', (d) => { stdout += d.toString(); });
-      p.on('error', () => resolve(false));
-      p.on('close', (code) => {
-        if (code === 0) {
-          try {
-            resolve(JSON.parse(stdout).success);
-          } catch {
-            resolve(false);
-          }
-        } else {
-          resolve(false);
-        }
-      });
-    });
+    return { connected: false, message: `配置端口不可达: ${robot.ip}:8080` };
   }
 
   /**
    * 连接机器人
    */
   async 连接机器人(uuid: string): Promise<RobotResponse> {
-    const robot = await this.获取机器人记录(uuid);
-    if (!robot) {
-      throw new Error('机器人不存在');
-    }
-
-    if (!robot.ip) {
-      throw new Error('缺少机器人IP');
-    }
-
-    const pythonScript = path.resolve(__dirname, '../../core/utils/ssh_helper.py');
-    const ok = await this.测试SSH连接(pythonScript, robot.ip);
-
-    if (!ok) {
-      throw new Error('连接失败');
-    }
-
-    await this.repository.updateRobot(uuid, { status: 'online' });
-    const result = await this.获取机器人(uuid);
-    if (!result) {
-      throw new Error('更新状态失败');
-    }
-    return result;
+    void uuid;
+    throw new Error('云端已移除连接机器人能力，请改用电脑端处理');
   }
 
   /**

@@ -1,30 +1,33 @@
-import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
-import path from 'path';
+import WebSocket from 'ws';
+import 配置 from '../../infra/config';
+import { apiKeyManager } from '../../infra/config/apikey-manager';
 import { logger } from '../../infra/logger';
 import { AudioResponse, TTSOptions } from '../../shared/types';
 import { uuidv7 } from '../../shared/utils/helpers';
 
-type PendingRequest = {
-  resolve: (audio: AudioResponse) => void;
-  reject: (error: Error) => void;
-  chunks: Uint8Array[];
-  format: 'mp3';
-  onChunk?: (chunk: { seq: number; base64: string; format: 'mp3' }) => void;
-  streamChunks: Uint8Array[];
-  streamChunkBytes: number;
-  streamSeq: number;
+type 音频格式 = 'pcm' | 'wav' | 'mp3' | 'opus';
+
+type 流式分片 = {
+  seq: number;
+  base64: string;
+  format: 音频格式;
+  sampleRate: number;
 };
 
-const 流式最小推送字节 = 24 * 1024;
+const 兼容音色映射: Record<string, string> = {
+  'female-soft': 'Cherry',
+  'female-bright': 'Serena',
+  'male-deep': 'Ethan',
+  'male-bright': 'Neil',
+  child: 'Mia',
+  robotic: 'Neil',
+};
 
 class 语音合成服务 {
-  private proc?: ChildProcessWithoutNullStreams;
-  private stdoutBuffer = '';
-  private pending = new Map<string, PendingRequest>();
-  private pythonCommand: string = process.platform === 'win32' ? 'python' : 'python3';
-
   constructor() {
-    this.ensureProcess();
+    if (配置.tts.provider !== 'aliyun') {
+      logger.warn('[TTS] 当前仅实现阿里云实时 TTS', { provider: 配置.tts.provider });
+    }
   }
 
   async synthesize(text: string, options?: TTSOptions): Promise<AudioResponse> {
@@ -34,156 +37,268 @@ class 语音合成服务 {
   async synthesizeStream(
     text: string,
     options?: TTSOptions,
-    onChunk?: (chunk: { seq: number; base64: string; format: 'mp3' }) => void
+    onChunk?: (chunk: 流式分片) => void,
   ): Promise<AudioResponse> {
-    this.ensureProcess();
-    const id = uuidv7();
-    return new Promise<AudioResponse>((resolve, reject) => {
-      this.pending.set(id, {
-        resolve,
-        reject,
-        chunks: [],
-        format: 'mp3',
-        onChunk,
-        streamChunks: [],
-        streamChunkBytes: 0,
-        streamSeq: 0,
-      });
-      const payload = {
-        id,
-        text,
-        voice: options?.voice || 'zh-CN-XiaoxiaoNeural',
-        speed: options?.speed ?? 0,
-        pitch: options?.pitch ?? 0,
-        volume: options?.volume ?? 0,
+    const cfg = 配置.tts.aliyun;
+    if (!cfg) {
+      throw new Error('阿里云 TTS配置未启用');
+    }
+
+    const apiKey = apiKeyManager.get('aliyun');
+    if (!apiKey) {
+      throw new Error('阿里云 TTS API密钥未配置');
+    }
+
+    const cleanedText = String(text || '').trim();
+    if (!cleanedText) {
+      return {
+        buffer: '',
+        format: cfg.responseFormat || 'pcm',
+        duration: 0,
+        sampleRate: cfg.sampleRate || 24000,
       };
-      const proc = this.proc;
-      if (!proc || !proc.stdin.writable) {
-        this.pending.delete(id);
-        reject(new Error('TTS进程未就绪'));
-        return;
-      }
-      proc.stdin.write(`${JSON.stringify(payload)}\n`);
-    });
-  }
+    }
 
-  private ensureProcess(): void {
-    if (this.proc && !this.proc.killed) {
-      return;
-    }
-    const scriptPath = path.join(__dirname, '../../core/scripts/edge_tts_runner.py');
-    const proc = spawn(this.pythonCommand, ['-u', scriptPath], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-    });
-    this.proc = proc;
+    const model = cfg.model || 'qwen3-tts-instruct-flash-realtime';
+    const wsUrl = this.构建实时TTS地址(cfg.baseUrl, model);
+    const format = cfg.responseFormat || 'pcm';
+    const sampleRate = cfg.sampleRate || 24000;
 
-    proc.stdout.on('data', (d) => this.handleStdout(d));
-    proc.stderr.on('data', () => {});
-    proc.on('error', (err) => this.handleExit(err));
-    proc.on('close', (code) => {
-      if (code !== 0) {
-        this.handleExit(new Error(`edge-tts 意外退出，代码 ${code}`));
-      } else {
-        this.handleExit(new Error('edge-tts 已退出'));
-      }
-    });
-  }
-
-  private handleStdout(data: Buffer): void {
-    try {
-      this.stdoutBuffer += data.toString('utf8');
-    } catch (error) {
-      logger.error('[TTS] UTF-8 解码错误:', error);
-      return;
-    }
-    let index = this.stdoutBuffer.indexOf('\n');
-    while (index !== -1) {
-      const line = this.stdoutBuffer.slice(0, index).trim();
-      this.stdoutBuffer = this.stdoutBuffer.slice(index + 1);
-      if (line) {
-        this.handleLine(line);
-      }
-      index = this.stdoutBuffer.indexOf('\n');
-    }
-  }
-
-  private handleLine(line: string): void {
-    let msg: any;
-    try {
-      msg = JSON.parse(line);
-    } catch {
-      return;
-    }
-    const id = String(msg?.id || '');
-    if (!id) {
-      return;
-    }
-    const pending = this.pending.get(id);
-    if (!pending) {
-      return;
-    }
-    if (msg.type === 'chunk') {
-      const base64 = String(msg.data || '');
-      if (base64) {
-        const decoded = Buffer.from(base64, 'base64');
-        const chunkBytes = Uint8Array.from(decoded);
-        pending.chunks.push(chunkBytes);
-        if (pending.onChunk) {
-          pending.streamChunks.push(chunkBytes);
-          pending.streamChunkBytes += chunkBytes.length;
-          if (pending.streamChunkBytes >= 流式最小推送字节) {
-            const mergedChunk = Buffer.concat(pending.streamChunks as Uint8Array[]);
-            pending.streamChunks = [];
-            pending.streamChunkBytes = 0;
-            pending.streamSeq += 1;
-            pending.onChunk({
-              seq: pending.streamSeq,
-              base64: mergedChunk.toString('base64'),
-              format: pending.format,
-            });
-          }
-        }
-      }
-      return;
-    }
-    if (msg.type === 'end') {
-      this.pending.delete(id);
-      if (pending.onChunk && pending.streamChunks.length > 0) {
-        const mergedChunk = Buffer.concat(pending.streamChunks as Uint8Array[]);
-        pending.streamChunks = [];
-        pending.streamChunkBytes = 0;
-        pending.streamSeq += 1;
-        pending.onChunk({
-          seq: pending.streamSeq,
-          base64: mergedChunk.toString('base64'),
-          format: pending.format,
-        });
-      }
-      const buffer = Buffer.concat(pending.chunks as Uint8Array[]);
-      pending.resolve({
-        format: pending.format,
-        buffer: buffer.toString('base64'),
-        duration: Number(msg.duration || 0),
+    return new Promise<AudioResponse>((resolve, reject) => {
+      const ws = new WebSocket(wsUrl, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'X-DashScope-DataInspection': 'disable',
+        },
       });
-      return;
-    }
-    if (msg.type === 'error') {
-      this.pending.delete(id);
-      pending.reject(new Error(String(msg.message || 'TTS失败')));
-    }
+
+      const chunks: Uint8Array[] = [];
+      let streamSeq = 0;
+      let settled = false;
+      let sessionReady = false;
+      let textCommitted = false;
+
+      const timeoutMs = 90_000;
+      const timeout = setTimeout(() => {
+        完成失败(new Error(`阿里云TTS超时（${timeoutMs}ms）`));
+      }, timeoutMs);
+
+      const 清理 = () => {
+        clearTimeout(timeout);
+        try {
+          ws.close();
+        } catch {}
+      };
+
+      const 完成成功 = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        清理();
+        const buffer = Buffer.concat(chunks as Uint8Array[]);
+        resolve({
+          buffer: buffer.toString('base64'),
+          format,
+          duration: 0,
+          sampleRate,
+        });
+      };
+
+      const 完成失败 = (error: Error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        清理();
+        reject(error);
+      };
+
+      const 发送事件 = (payload: Record<string, unknown>) => {
+        ws.send(JSON.stringify({
+          event_id: uuidv7(),
+          ...payload,
+        }));
+      };
+
+      const 构建会话参数 = (): Record<string, unknown> => {
+        const session: Record<string, unknown> = {
+          model,
+          voice: this.归一化音色(options?.voice || cfg.voice || 'Cherry'),
+          response_format: format,
+          sample_rate: sampleRate,
+        };
+
+        if (cfg.instructions) {
+          session.instructions = cfg.instructions;
+          session.optimize_instructions = Boolean(cfg.optimizeInstructions);
+        }
+
+        const speechRate = this.转换倍率(options?.speed);
+        const pitchRate = this.转换倍率(options?.pitch);
+        const volume = this.转换音量(options?.volume);
+
+        if (speechRate !== undefined) {
+          session.speech_rate = speechRate;
+        }
+        if (pitchRate !== undefined) {
+          session.pitch_rate = pitchRate;
+        }
+        if (volume !== undefined) {
+          session.volume = volume;
+        }
+
+        return session;
+      };
+
+      ws.on('open', () => {
+        logger.info('[阿里云TTS] WebSocket 连接成功', {
+          model,
+          voice: this.归一化音色(options?.voice || cfg.voice || 'Cherry'),
+          format,
+          sampleRate,
+          wsUrl,
+        });
+        发送事件({
+          type: 'session.update',
+          session: 构建会话参数(),
+        });
+      });
+
+      ws.on('message', (data: WebSocket.RawData) => {
+        try {
+          const message = JSON.parse(data.toString());
+
+          switch (message.type) {
+            case 'session.updated':
+              sessionReady = true;
+              logger.info('[阿里云TTS] 会话初始化完成', { model, wsUrl });
+              发送事件({
+                type: 'input_text_buffer.append',
+                text: cleanedText,
+              });
+              发送事件({
+                type: 'input_text_buffer.commit',
+              });
+              textCommitted = true;
+              return;
+
+            case 'response.audio.delta': {
+              const base64 = String(message.delta || '');
+              if (!base64) {
+                return;
+              }
+              const chunk = Buffer.from(base64, 'base64');
+              chunks.push(Uint8Array.from(chunk));
+              if (onChunk) {
+                streamSeq += 1;
+                onChunk({
+                  seq: streamSeq,
+                  base64,
+                  format,
+                  sampleRate,
+                });
+              }
+              return;
+            }
+
+            case 'response.done':
+              完成成功();
+              return;
+
+            case 'error': {
+              const errorMessage = String(
+                message.error?.message
+                || message.message
+                || message.header?.error_message
+                || '阿里云TTS失败',
+              );
+              logger.error('[阿里云TTS] 服务端返回错误', new Error(errorMessage), {
+                model,
+                wsUrl,
+                payload: message,
+              });
+              完成失败(new Error(errorMessage));
+              return;
+            }
+
+            default:
+              return;
+          }
+        } catch (error) {
+          完成失败(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+
+      ws.on('error', (error) => {
+        完成失败(new Error(`阿里云TTS连接错误: ${error.message}`));
+      });
+
+      ws.on('close', (code, reasonBuffer) => {
+        if (settled) {
+          return;
+        }
+        const reason = reasonBuffer.toString();
+        logger.warn('[阿里云TTS] WebSocket 关闭', {
+          model,
+          wsUrl,
+          code,
+          reason,
+          sessionReady,
+          textCommitted,
+        });
+        if (!sessionReady) {
+          完成失败(new Error(`阿里云TTS会话未初始化就断开连接 [code=${code}${reason ? `, reason=${reason}` : ''}]`));
+          return;
+        }
+        if (!textCommitted) {
+          完成失败(new Error(`阿里云TTS文本未提交就断开连接 [code=${code}${reason ? `, reason=${reason}` : ''}]`));
+          return;
+        }
+        完成成功();
+      });
+    });
   }
 
-  private handleExit(error: Error): void {
-    for (const pending of this.pending.values()) {
-      pending.reject(error);
+  private 转换倍率(value?: number): number | undefined {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return undefined;
     }
-    this.pending.clear();
-    this.proc = undefined;
+    return Math.max(0.5, Math.min(2, Number((1 + value / 100).toFixed(2))));
+  }
+
+  private 转换音量(value?: number): number | undefined {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return undefined;
+    }
+    return Math.max(0, Math.min(100, Math.round(50 + value)));
+  }
+
+  private 归一化音色(value?: string): string {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return 'Cherry';
+    }
+    return 兼容音色映射[normalized] || normalized;
+  }
+
+  private 构建实时TTS地址(baseUrl: string | undefined, model: string): string {
+    const 默认地址 = 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime';
+    const 原始地址 = String(baseUrl || '').trim() || 默认地址;
+    const url = new URL(原始地址);
+
+    if (url.pathname.endsWith('/inference')) {
+      url.pathname = url.pathname.replace(/\/inference$/, '/realtime');
+    }
+
+    if (!url.searchParams.get('model')) {
+      url.searchParams.set('model', model);
+    }
+
+    return url.toString();
   }
 }
 
 export default 语音合成服务;
 
 export { 语音合成服务 as TTSService };
-

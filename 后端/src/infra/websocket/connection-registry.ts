@@ -193,6 +193,30 @@ export class WebSocket连接注册表 {
     }
   }
 
+  发送到网页UI(robotId: string, message: ServerMessage, channel: Channel = 'business'): boolean {
+    const byChannel = this.uiConnections.get(robotId)?.get(channel);
+    if (!byChannel || byChannel.size === 0) {
+      return false;
+    }
+
+    let sent = false;
+    for (const uiWs of byChannel.values()) {
+      const meta = this.uiSocketMeta.get(uiWs);
+      if (meta?.phoneSessionId || meta?.phoneDeviceId) {
+        continue;
+      }
+
+      try {
+        uiWs.send(JSON.stringify(message));
+        sent = true;
+      } catch (error) {
+        logger.error('发送消息到网页UI失败', this.转成错误对象(error), { robotId });
+      }
+    }
+
+    return sent;
+  }
+
   定向发送到UI(
     robotId: string,
     phoneSessionId: string,

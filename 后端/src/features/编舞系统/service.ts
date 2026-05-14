@@ -3,9 +3,7 @@
  * 负责项目管理、时间轴数据存储和动作执行
  */
 
-import { logger } from '../../infra/logger';
 import type { RobotRepository } from '../机器人管理/repository';
-import { 编舞机器人控制桥接 } from './bridges/robot-control-bridge';
 import type { 编舞执行消息网关 } from './execution-message-gateway';
 import { 编舞执行服务 } from './execution-service';
 import { 编舞项目文件资源服务 } from './project-file-resource-service';
@@ -19,7 +17,6 @@ import type {
   AddRobotToProjectDto,
   ChoreoProject,
   ChoreoRobot,
-  ConnectionTestResult,
   CreateProjectDto,
   CustomAction,
   ExecutionPlan,
@@ -34,10 +31,6 @@ import type {
 } from './types';
 
 type 编舞机器人查询仓库 = Pick<RobotRepository, 'getRobot'>;
-type 编舞机器人控制桥接接口 = Pick<
-  编舞机器人控制桥接,
-  'testRobotConnection' | 'connectRobot' | 'restartMotionControl'
->;
 type 编舞项目机器人服务接口 = Pick<
   编舞项目机器人服务,
   | 'getProjectRobots'
@@ -47,9 +40,6 @@ type 编舞项目机器人服务接口 = Pick<
   | 'getProjectRobotsConfig'
   | 'updateProjectRobot'
   | 'deleteProjectRobot'
-  | 'testRobotConnection'
-  | 'connectRobot'
-  | 'restartMotionControl'
 >;
 type 编舞项目文件资源服务接口 = Pick<
   编舞项目文件资源服务,
@@ -91,7 +81,6 @@ type 编舞时间轴编译器接口 = Pick<编舞时间轴编译器, 'compile'>;
 export interface 编舞服务依赖 {
   机器人仓库: 编舞机器人查询仓库;
   存储?: 编舞项目存储;
-  机器人控制桥接?: 编舞机器人控制桥接接口;
   执行消息网关?: 编舞执行消息网关;
   执行服务?: 编舞执行服务;
   时间轴编译器?: 编舞时间轴编译器接口;
@@ -112,7 +101,6 @@ export class 编舞服务 {
   constructor({
     机器人仓库,
     存储 = new 编舞项目存储(),
-    机器人控制桥接 = new 编舞机器人控制桥接(),
     执行消息网关,
     执行服务,
     时间轴编译器 = new 编舞时间轴编译器(),
@@ -137,7 +125,6 @@ export class 编舞服务 {
       (projectUuid) => 管理服务.获取项目记录(projectUuid),
       存储,
       机器人仓库,
-      机器人控制桥接,
     );
     this.项目文件资源服务 = 项目文件资源服务 ?? new 编舞项目文件资源服务(
       (projectUuid) => 管理服务.获取项目记录(projectUuid),
@@ -439,31 +426,6 @@ export class 编舞服务 {
    */
   async deleteProjectRobot(projectUuid: string, robotUuid: string): Promise<void> {
     await this.项目机器人服务.deleteProjectRobot(projectUuid, robotUuid);
-  }
-
-  // ==================== 机器人连接测试 ====================
-
-  /**
-   * 测试机器人 SSH 连接
-   */
-  async testRobotConnection(projectUuid: string, robotUuid: string): Promise<ConnectionTestResult> {
-    const result = await this.项目机器人服务.testRobotConnection(projectUuid, robotUuid);
-    logger.info('测试连接结果', { projectUuid, robotUuid, ...result });
-    return result;
-  }
-
-  /**
-   * 通过 Python 连接机器人并自动配置
-   */
-  async connectRobot(projectUuid: string, robotUuid: string): Promise<ConnectionTestResult> {
-    return this.项目机器人服务.connectRobot(projectUuid, robotUuid);
-  }
-
-  /**
-   * 重启运控
-   */
-  async restartMotionControl(projectUuid: string, robotUuid: string): Promise<{ success: boolean; message: string }> {
-    return this.项目机器人服务.restartMotionControl(projectUuid, robotUuid);
   }
 
 }

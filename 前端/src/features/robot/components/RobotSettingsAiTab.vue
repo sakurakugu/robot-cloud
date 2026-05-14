@@ -41,28 +41,10 @@
           @change="emit('auto-save', 'ai_voice')"
         >
           <el-option
-            label="女声-温柔"
-            value="female-soft"
-          />
-          <el-option
-            label="女声-活泼"
-            value="female-bright"
-          />
-          <el-option
-            label="男声-低沉"
-            value="male-deep"
-          />
-          <el-option
-            label="男声-洪亮"
-            value="male-bright"
-          />
-          <el-option
-            label="童声"
-            value="child"
-          />
-          <el-option
-            label="电子音"
-            value="robotic"
+            v-for="voice in ttsVoices"
+            :key="voice.value"
+            :label="voice.label"
+            :value="voice.value"
           />
         </el-select>
       </el-form-item>
@@ -126,6 +108,14 @@ import { computed } from 'vue'
 import { updateRobot as updateRobotDetail } from '../api'
 import { getRobotErrorMessage } from '../settings'
 import type { RobotSettingsField, RobotSettingsFormData } from '../settings'
+
+const ttsVoices = [
+  { label: 'Cherry', value: 'Cherry' },
+  { label: 'Mia', value: 'Mia' },
+  { label: 'Neil', value: 'Neil' },
+  { label: 'Serena', value: 'Serena' },
+  { label: 'Ethan', value: 'Ethan' },
+]
 
 const props = defineProps<{
   formData: RobotSettingsFormData

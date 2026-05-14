@@ -28,10 +28,48 @@ export class 设置服务 {
     配置.asr.xunfei.appId = appId;
     配置.asr.xunfei.apiKey = apiKey;
     配置.asr.xunfei.apiSecret = apiSecret;
+
+    if (!配置.tts.aliyun) {
+      配置.tts.aliyun = {
+        apiKey: '',
+        model: 'qwen3-tts-instruct-flash-realtime',
+        baseUrl: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
+        voice: 'Cherry',
+        responseFormat: 'mp3',
+        sampleRate: 24000,
+        instructions: '',
+        optimizeInstructions: false,
+      };
+    }
+
+    配置.tts.aliyun.apiKey = await this.读取并迁移环境变量('tts.aliyun.apiKey', 'ALIYUN_TTS_API_KEY');
+    配置.tts.aliyun.model = await this.读取并迁移环境变量('tts.aliyun.model', 'ALIYUN_TTS_MODEL') || 配置.tts.aliyun.model;
+    配置.tts.aliyun.voice = await this.读取并迁移环境变量('tts.aliyun.voice', 'ALIYUN_TTS_VOICE') || 配置.tts.aliyun.voice;
+    const responseFormat = await this.读取并迁移环境变量('tts.aliyun.responseFormat', 'ALIYUN_TTS_RESPONSE_FORMAT');
+    if (responseFormat === 'pcm' || responseFormat === 'wav' || responseFormat === 'mp3' || responseFormat === 'opus') {
+      配置.tts.aliyun.responseFormat = responseFormat;
+    }
+    const sampleRate = Number(await this.读取并迁移环境变量('tts.aliyun.sampleRate', 'ALIYUN_TTS_SAMPLE_RATE'));
+    if ([8000, 16000, 24000, 48000].includes(sampleRate as 8000 | 16000 | 24000 | 48000)) {
+      配置.tts.aliyun.sampleRate = sampleRate as 8000 | 16000 | 24000 | 48000;
+    }
+    配置.tts.aliyun.instructions = await this.读取并迁移环境变量('tts.aliyun.instructions', 'ALIYUN_TTS_INSTRUCTIONS');
+    配置.tts.aliyun.optimizeInstructions = this.解析布尔设置(
+      await this.读取并迁移环境变量('tts.aliyun.optimizeInstructions', 'ALIYUN_TTS_OPTIMIZE_INSTRUCTIONS'),
+    );
   }
 
   async getAIConfig(): Promise<AIConfig> {
     const xunfei = 配置.asr.xunfei || { appId: '', apiKey: '', apiSecret: '' };
+    const aliyunTts = 配置.tts.aliyun || {
+      apiKey: '',
+      model: 'qwen3-tts-instruct-flash-realtime',
+      voice: 'Cherry',
+      responseFormat: 'mp3' as const,
+      sampleRate: 24000 as const,
+      instructions: '',
+      optimizeInstructions: false,
+    };
     return {
       xunfeiAsr: {
         hasAppId: xunfei.appId.length > 0,
@@ -40,6 +78,16 @@ export class 设置服务 {
         apiKeyLength: xunfei.apiKey.length,
         hasApiSecret: xunfei.apiSecret.length > 0,
         apiSecretLength: xunfei.apiSecret.length,
+      },
+      aliyunTts: {
+        hasApiKey: aliyunTts.apiKey.length > 0,
+        apiKeyLength: aliyunTts.apiKey.length,
+        model: aliyunTts.model,
+        voice: aliyunTts.voice,
+        responseFormat: aliyunTts.responseFormat,
+        sampleRate: aliyunTts.sampleRate,
+        instructions: aliyunTts.instructions || '',
+        optimizeInstructions: Boolean(aliyunTts.optimizeInstructions),
       },
     };
   }
@@ -50,32 +98,87 @@ export class 设置服务 {
       apiKey?: string;
       apiSecret?: string;
     };
+    aliyunTts: {
+      apiKey?: string;
+      model?: string;
+      voice?: string;
+      responseFormat?: 'pcm' | 'wav' | 'mp3' | 'opus';
+      sampleRate?: 8000 | 16000 | 24000 | 48000;
+      instructions?: string;
+      optimizeInstructions?: boolean;
+    };
   }>): Promise<{ success: boolean }> {
-    if (!data.xunfeiAsr) {
-      return { success: true };
-    }
+    const 任务列表: Promise<void>[] = [];
 
     if (!配置.asr.xunfei) {
       配置.asr.xunfei = { appId: '', apiKey: '', apiSecret: '' };
     }
 
     const xunfei = data.xunfeiAsr;
-    const 任务列表: Promise<void>[] = [];
 
-    if (typeof xunfei.appId === 'string') {
+    if (xunfei && typeof xunfei.appId === 'string') {
       const value = xunfei.appId.trim();
       配置.asr.xunfei.appId = value;
       任务列表.push(this.更新设置值('asr.xunfei.appId', value));
     }
-    if (typeof xunfei.apiKey === 'string') {
+    if (xunfei && typeof xunfei.apiKey === 'string') {
       const value = xunfei.apiKey.trim();
       配置.asr.xunfei.apiKey = value;
       任务列表.push(this.更新设置值('asr.xunfei.apiKey', value));
     }
-    if (typeof xunfei.apiSecret === 'string') {
+    if (xunfei && typeof xunfei.apiSecret === 'string') {
       const value = xunfei.apiSecret.trim();
       配置.asr.xunfei.apiSecret = value;
       任务列表.push(this.更新设置值('asr.xunfei.apiSecret', value));
+    }
+    if (!配置.tts.aliyun) {
+      配置.tts.aliyun = {
+        apiKey: '',
+        model: 'qwen3-tts-instruct-flash-realtime',
+        baseUrl: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
+        voice: 'Cherry',
+        responseFormat: 'mp3',
+        sampleRate: 24000,
+        instructions: '',
+        optimizeInstructions: false,
+      };
+    }
+
+    if (data.aliyunTts) {
+      const aliyunTts = data.aliyunTts;
+      if (typeof aliyunTts.apiKey === 'string') {
+        const value = aliyunTts.apiKey.trim();
+        配置.tts.aliyun.apiKey = value;
+        任务列表.push(this.更新设置值('tts.aliyun.apiKey', value));
+      }
+      if (typeof aliyunTts.model === 'string') {
+        const value = aliyunTts.model.trim();
+        配置.tts.aliyun.model = value || 配置.tts.aliyun.model;
+        if (value) 任务列表.push(this.更新设置值('tts.aliyun.model', value));
+      }
+      if (typeof aliyunTts.voice === 'string') {
+        const value = aliyunTts.voice.trim();
+        配置.tts.aliyun.voice = value || 配置.tts.aliyun.voice;
+        if (value) 任务列表.push(this.更新设置值('tts.aliyun.voice', value));
+      }
+      if (aliyunTts.responseFormat === 'pcm' || aliyunTts.responseFormat === 'wav' || aliyunTts.responseFormat === 'mp3' || aliyunTts.responseFormat === 'opus') {
+        配置.tts.aliyun.responseFormat = aliyunTts.responseFormat;
+        任务列表.push(this.更新设置值('tts.aliyun.responseFormat', aliyunTts.responseFormat));
+      }
+      if ([8000, 16000, 24000, 48000].includes(Number(aliyunTts.sampleRate))) {
+        const value = Number(aliyunTts.sampleRate) as 8000 | 16000 | 24000 | 48000;
+        配置.tts.aliyun.sampleRate = value;
+        任务列表.push(this.更新设置值('tts.aliyun.sampleRate', String(value)));
+      }
+      if (typeof aliyunTts.instructions === 'string') {
+        const value = aliyunTts.instructions.trim();
+        配置.tts.aliyun.instructions = value;
+        任务列表.push(this.更新设置值('tts.aliyun.instructions', value));
+      }
+      if (typeof aliyunTts.optimizeInstructions === 'boolean') {
+        配置.tts.aliyun.optimizeInstructions = aliyunTts.optimizeInstructions;
+        任务列表.push(this.更新设置值('tts.aliyun.optimizeInstructions', aliyunTts.optimizeInstructions ? 'true' : ''));
+      }
     }
 
     await Promise.all(任务列表);

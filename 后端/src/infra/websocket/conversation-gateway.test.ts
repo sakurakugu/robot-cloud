@@ -59,7 +59,7 @@ function 创建角色记录(partial: Partial<RoleRecord> = {}): RoleRecord {
     system_prompt: '系统提示',
     asr_provider: 'aliyun',
     asr_model: 'aliyun-model',
-    voice: 'xiaoyun',
+    voice: 'Cherry',
     intent_strategy: 'default',
     max_history: 10,
     is_default: 0,
@@ -97,6 +97,7 @@ function 创建依赖() {
     获取音频路由配置: jest.fn().mockResolvedValue(创建音频路由()),
     发送音频消息: jest.fn(),
     是否发送最终音频响应: jest.fn().mockReturnValue(true),
+    发送到网页UI: jest.fn().mockReturnValue(true),
     发送到机器人: jest.fn(),
     广播消息: jest.fn(),
     发送到UI: jest.fn(),
@@ -171,22 +172,30 @@ describe('WebSocket对话网关', () => {
   it('处理 TTS 输入时应清理标记并按音频路由发送流式消息', async () => {
     const 依赖 = 创建依赖();
     依赖.ttsService.synthesizeStream.mockImplementation(
-      async (text: string, _ttsOptions: any, onChunk: (chunk: { seq: number; base64: string; format: 'mp3' }) => void) => {
+      async (
+        text: string,
+        _ttsOptions: any,
+        onChunk: (chunk: { seq: number; base64: string; format: 'mp3'; sampleRate: number }) => void,
+      ) => {
         onChunk({
           seq: 1,
           base64: 'chunk-1',
           format: 'mp3',
+          sampleRate: 24000,
         });
         return {
-          audio: 'final-audio',
+          buffer: 'final-audio',
           duration: 123,
           format: 'mp3',
+          sampleRate: 24000,
         };
       },
     );
     const 网关 = new WebSocket对话网关(依赖 as any);
 
-    await 网关.handleTTSInput('robot-1', '你好{{action=wave}}{{meaning=false}}{{vision=true}}');
+    await 网关.handleTTSInput('robot-1', '你好{{action=wave}}{{meaning=false}}{{vision=true}}', {
+      stream: true,
+    });
 
     expect(依赖.ttsService.synthesizeStream).toHaveBeenCalledWith(
       '你好',
@@ -206,5 +215,8 @@ describe('WebSocket对话网关', () => {
     expect(依赖.发送音频消息).toHaveBeenNthCalledWith(4, 'robot-1', 创建音频路由(), expect.objectContaining({
       type: 'audio_response',
     }));
+    expect(依赖.发送到网页UI).toHaveBeenCalledWith('robot-1', expect.objectContaining({
+      type: 'audio_response',
+    }), 'audio_download');
   });
 });

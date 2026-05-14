@@ -117,17 +117,6 @@ export function createChoreoRoutes(controller: ChoreoController): Router {
   // 删除机器人配置
   router.delete('/projects/:uuid/robots-config/:robotUuid', controller.deleteProjectRobot);
 
-  // ==================== 机器人连接与控制 ====================
-
-  // 测试机器人连接
-  router.post('/projects/:uuid/robots/:robotUuid/test-connection', controller.testRobotConnection);
-
-  // 连接机器人（Python 连接并自动配置）
-  router.post('/projects/:uuid/robots/:robotUuid/connect', controller.connectRobot);
-
-  // 重启运控
-  router.post('/projects/:uuid/robots/:robotUuid/restart-motion', controller.restartMotionControl);
-
   // ==================== 时间轴管理 ====================
 
   // 获取时间轴数据

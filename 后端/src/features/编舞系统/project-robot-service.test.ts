@@ -21,12 +21,6 @@ type 机器人仓库Mock = {
   getRobot: jest.Mock;
 };
 
-type 机器人控制桥接Mock = {
-  testRobotConnection: jest.Mock;
-  connectRobot: jest.Mock;
-  restartMotionControl: jest.Mock;
-};
-
 function 创建测试环境(): 测试环境 {
   const 临时目录 = fs.mkdtempSync(path.join(os.tmpdir(), 'choreo-project-robot-'));
   const 数据目录 = path.join(临时目录, 'data');
@@ -52,14 +46,6 @@ function 创建测试环境(): 测试环境 {
 function 创建机器人仓库Mock(): 机器人仓库Mock {
   return {
     getRobot: jest.fn(),
-  };
-}
-
-function 创建机器人控制桥接Mock(): 机器人控制桥接Mock {
-  return {
-    testRobotConnection: jest.fn(),
-    connectRobot: jest.fn(),
-    restartMotionControl: jest.fn(),
   };
 }
 
@@ -100,8 +86,7 @@ describe('编舞项目机器人服务', () => {
     const 服务 = new 编舞项目机器人服务(
       () => 环境.项目,
       环境.存储,
-      机器人仓库 as any,
-      创建机器人控制桥接Mock() as any,
+      机器人仓库 as any
     );
 
     const 机器人 = await 服务.addRobotToProject(环境.项目.uuid, {
@@ -124,8 +109,7 @@ describe('编舞项目机器人服务', () => {
     const 服务 = new 编舞项目机器人服务(
       () => 环境.项目,
       环境.存储,
-      创建机器人仓库Mock() as any,
-      创建机器人控制桥接Mock() as any,
+      创建机器人仓库Mock() as any
     );
 
     const 机器人 = await 服务.addRobotToProjectDirect(环境.项目.uuid, {
@@ -149,41 +133,6 @@ describe('编舞项目机器人服务', () => {
     expect(await 服务.getProjectRobotsConfig(环境.项目.uuid)).toEqual([]);
   });
 
-  it('应通过桥接连接机器人并回写状态', async () => {
-    const 机器人控制桥接 = 创建机器人控制桥接Mock();
-    机器人控制桥接.connectRobot.mockResolvedValue({
-      success: true,
-      connected: true,
-      message: '连接成功',
-      mode: 'wifi',
-    });
-
-    const 服务 = new 编舞项目机器人服务(
-      () => 环境.项目,
-      环境.存储,
-      创建机器人仓库Mock() as any,
-      机器人控制桥接 as any,
-    );
-
-    const 机器人 = await 服务.addRobotToProjectDirect(环境.项目.uuid, {
-      name: '待连接机器人',
-      robot_ip: '192.168.1.20',
-      local_ip: '192.168.1.2',
-      local_port: 9000,
-    });
-
-    const 结果 = await 服务.connectRobot(环境.项目.uuid, 机器人.uuid);
-
-    expect(机器人控制桥接.connectRobot).toHaveBeenCalledWith(
-      expect.objectContaining({
-        uuid: 机器人.uuid,
-        robot_ip: '192.168.1.20',
-      }),
-    );
-    expect(结果.connected).toBe(true);
-    expect((await 服务.getProjectRobotsConfig(环境.项目.uuid))[0].status).toBe('online');
-  });
-
   it('关联机器人与直连机器人配置应写入不同文件且互不覆盖', async () => {
     const 机器人仓库 = 创建机器人仓库Mock();
     机器人仓库.getRobot.mockResolvedValue({
@@ -194,8 +143,7 @@ describe('编舞项目机器人服务', () => {
     const 服务 = new 编舞项目机器人服务(
       () => 环境.项目,
       环境.存储,
-      机器人仓库 as any,
-      创建机器人控制桥接Mock() as any,
+      机器人仓库 as any
     );
 
     await 服务.addRobotToProject(环境.项目.uuid, {

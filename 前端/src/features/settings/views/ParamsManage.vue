@@ -65,6 +65,75 @@
                 @enable-edit="enableXunfeiEdit(field.key)"
               />
 
+              <el-divider content-position="left">
+                阿里云 TTS
+              </el-divider>
+              <MaskedSecretInput
+                label="API Key"
+                :model-value="aliyunTtsConfig.apiKey"
+                :readonly="aliyunTtsConfig.readonlyApiKey"
+                :show-value="aliyunTtsConfig.showApiKey"
+                :has-value="aliyunTtsConfig.hasApiKey"
+                placeholder="粘贴阿里云 TTS API Key"
+                :clipboard-paste-enabled="allowSecretClipboardPaste"
+                @update:model-value="updateAliyunTtsField('apiKey', $event)"
+                @toggle-visibility="toggleAliyunTtsVisibility('apiKey')"
+                @paste="pasteAliyunTtsField('apiKey')"
+                @enable-edit="enableAliyunTtsEdit('apiKey')"
+              />
+              <el-form-item label="模型">
+                <el-input
+                  v-model="aliyunTtsModel"
+                  placeholder="例如：qwen3-tts-instruct-flash-realtime"
+                />
+              </el-form-item>
+              <el-form-item label="音色">
+                <el-select
+                  v-model="aliyunTtsVoice"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="voice in aliyunTtsVoices"
+                    :key="voice.value"
+                    :label="voice.label"
+                    :value="voice.value"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="输出格式">
+                <el-select
+                  v-model="aliyunTtsResponseFormat"
+                  style="width: 100%"
+                >
+                  <el-option label="MP3" value="mp3" />
+                  <el-option label="WAV" value="wav" />
+                  <el-option label="PCM" value="pcm" />
+                  <el-option label="OPUS" value="opus" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="采样率">
+                <el-select
+                  v-model="aliyunTtsSampleRate"
+                  style="width: 100%"
+                >
+                  <el-option label="8000" :value="8000" />
+                  <el-option label="16000" :value="16000" />
+                  <el-option label="24000" :value="24000" />
+                  <el-option label="48000" :value="48000" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="提示词">
+                <el-input
+                  v-model="aliyunTtsInstructions"
+                  type="textarea"
+                  :rows="4"
+                  placeholder="可选"
+                />
+              </el-form-item>
+              <el-form-item label="优化提示词">
+                <el-switch v-model="aliyunTtsOptimizeInstructions" />
+              </el-form-item>
+
               <el-form-item>
                 <el-button
                   type="primary"
@@ -98,20 +167,27 @@ import { computed, onMounted, ref } from 'vue'
 import { getAIConfig, getLLMConfig, getSystemConfig, updateAIConfig, updateLLMConfig } from '../api'
 import MaskedSecretInput from '../components/MaskedSecretInput.vue'
 import {
+  applyAliyunTtsSecretConfig,
   applyProviderSecretConfig,
   applyXunfeiAsrSecretConfig,
+  buildAliyunTtsUpdatePayload,
   buildLLMUpdatePayload,
   buildXunfeiUpdatePayload,
+  createAliyunTtsSecretConfig,
   createProviderSecretConfig,
   createXunfeiAsrSecretConfig,
+  enableAliyunTtsFieldEdit,
   enableProviderEdit,
   enableXunfeiFieldEdit,
+  setAliyunTtsFieldValue,
   llmProviderKeys,
+  toggleAliyunTtsFieldVisibility,
   setProviderSecretValue,
   setXunfeiFieldValue,
   toggleProviderVisibility,
   toggleXunfeiFieldVisibility,
   type XunfeiFieldKey,
+  type AliyunTtsFieldKey,
 } from '../params'
 import type { LLMProviderKey } from '../types'
 
@@ -129,6 +205,7 @@ const anthropicConfig = ref(createProviderSecretConfig())
 const deepseekConfig = ref(createProviderSecretConfig())
 const aliyunConfig = ref(createProviderSecretConfig())
 const xunfeiAsrConfig = ref(createXunfeiAsrSecretConfig())
+const aliyunTtsConfig = ref(createAliyunTtsSecretConfig())
 const allowSecretClipboardPaste = ref(false)
 
 const llmProviderSections = computed(() => [
@@ -209,6 +286,39 @@ const xunfeiFields = computed(() => [
   },
 ])
 
+const aliyunTtsVoices = [
+  { value: 'Cherry', label: 'Cherry' },
+  { value: 'Mia', label: 'Mia' },
+  { value: 'Neil', label: 'Neil' },
+  { value: 'Serena', label: 'Serena' },
+  { value: 'Ethan', label: 'Ethan' },
+]
+
+const aliyunTtsModel = computed({
+  get: () => aliyunTtsConfig.value.model,
+  set: (value: string) => { aliyunTtsConfig.value.model = value },
+})
+const aliyunTtsVoice = computed({
+  get: () => aliyunTtsConfig.value.voice,
+  set: (value: string) => { aliyunTtsConfig.value.voice = value },
+})
+const aliyunTtsResponseFormat = computed({
+  get: () => aliyunTtsConfig.value.responseFormat,
+  set: (value: 'pcm' | 'wav' | 'mp3' | 'opus') => { aliyunTtsConfig.value.responseFormat = value },
+})
+const aliyunTtsSampleRate = computed({
+  get: () => aliyunTtsConfig.value.sampleRate,
+  set: (value: 8000 | 16000 | 24000 | 48000) => { aliyunTtsConfig.value.sampleRate = value },
+})
+const aliyunTtsInstructions = computed({
+  get: () => aliyunTtsConfig.value.instructions,
+  set: (value: string) => { aliyunTtsConfig.value.instructions = value },
+})
+const aliyunTtsOptimizeInstructions = computed({
+  get: () => aliyunTtsConfig.value.optimizeInstructions,
+  set: (value: boolean) => { aliyunTtsConfig.value.optimizeInstructions = value },
+})
+
 const llmConfigRefs = {
   openai: openaiConfig,
   bigmodel: bigmodelConfig,
@@ -250,6 +360,7 @@ onMounted(async () => {
   try {
     const aiRes = await getAIConfig()
     applyXunfeiAsrSecretConfig(xunfeiAsrConfig.value, aiRes.data?.xunfeiAsr)
+    applyAliyunTtsSecretConfig(aliyunTtsConfig.value, aiRes.data?.aliyunTts)
   } catch (error) {
     console.error('加载讯飞配置失败:', error)
   }
@@ -299,6 +410,24 @@ const enableXunfeiEdit = (field: XunfeiFieldKey) => {
   enableXunfeiFieldEdit(xunfeiAsrConfig.value, field)
 }
 
+const toggleAliyunTtsVisibility = (field: AliyunTtsFieldKey) => {
+  toggleAliyunTtsFieldVisibility(aliyunTtsConfig.value, field)
+}
+
+const updateAliyunTtsField = (field: AliyunTtsFieldKey, value: string) => {
+  setAliyunTtsFieldValue(aliyunTtsConfig.value, field, value)
+}
+
+const pasteAliyunTtsField = async (field: AliyunTtsFieldKey) => {
+  await applyClipboardValue((text) => {
+    setAliyunTtsFieldValue(aliyunTtsConfig.value, field, text)
+  })
+}
+
+const enableAliyunTtsEdit = (field: AliyunTtsFieldKey) => {
+  enableAliyunTtsFieldEdit(aliyunTtsConfig.value, field)
+}
+
 const saveLLMConfig = async () => {
   if (!authStore.isSuperAdmin) {
     ElMessage.error('仅主管理员可修改 API Key')
@@ -312,9 +441,11 @@ const saveLLMConfig = async () => {
     aliyun: aliyunConfig.value,
   })
   const xunfeiPayload = buildXunfeiUpdatePayload(xunfeiAsrConfig.value)
+  const aliyunTtsPayload = buildAliyunTtsUpdatePayload(aliyunTtsConfig.value)
 
   const hasLLMUpdate = Object.keys(llmPayload).length > 0
   const hasXunfeiUpdate = Object.keys(xunfeiPayload).length > 0
+  const hasAliyunTtsUpdate = Object.keys(aliyunTtsPayload).length > 0
 
   try {
     if (hasLLMUpdate) {
@@ -323,8 +454,11 @@ const saveLLMConfig = async () => {
     if (hasXunfeiUpdate) {
       await updateAIConfig({ xunfeiAsr: xunfeiPayload })
     }
+    if (hasAliyunTtsUpdate) {
+      await updateAIConfig({ aliyunTts: aliyunTtsPayload })
+    }
 
-    if (hasLLMUpdate || hasXunfeiUpdate) {
+    if (hasLLMUpdate || hasXunfeiUpdate || hasAliyunTtsUpdate) {
       saved.value = true
       setTimeout(() => (saved.value = false), 1200)
     }

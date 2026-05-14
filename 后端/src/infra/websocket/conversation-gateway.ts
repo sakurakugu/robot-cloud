@@ -47,7 +47,8 @@ type 对话配置 = {
 type 音频流分片 = {
   seq: number;
   base64: string;
-  format: 'mp3';
+  format: 'pcm' | 'wav' | 'mp3' | 'opus';
+  sampleRate: number;
 };
 type 对话响应 = Awaited<ReturnType<对话服务['处理消息']>>;
 type 视觉图片 = { base64: string; format?: string };
@@ -61,6 +62,7 @@ export interface WebSocket对话网关依赖 {
   获取音频路由配置(robotId: string): Promise<音频路由配置>;
   发送音频消息(robotId: string, route: 音频路由配置, message: ServerMessage): void;
   是否发送最终音频响应(robotId: string, route: 音频路由配置): boolean;
+  发送到网页UI(robotId: string, message: ServerMessage, channel: Channel): boolean;
   发送到机器人(robotId: string, message: ServerMessage, channel: Channel): boolean;
   广播消息(robotId: string, message: ServerMessage, channel: Channel): void;
   发送到UI(robotId: string, message: ServerMessage, channel: Channel): void;
@@ -465,7 +467,7 @@ export class WebSocket对话网关 {
     },
   ): Promise<void> {
     const audioRoute = await this.依赖.获取音频路由配置(robotId);
-    const streamEnabled = ttsOptions?.stream !== false;
+    const streamEnabled = ttsOptions?.stream === true;
 
     if (streamEnabled) {
       this.依赖.发送音频消息(robotId, audioRoute, {
@@ -475,7 +477,7 @@ export class WebSocket对话网关 {
         conversationId: 选项.流式会话ID,
         data: {
           sessionId: 选项.流式会话ID,
-          format: 'mp3',
+          format: 配置.tts.aliyun?.responseFormat || 'mp3',
         },
       });
 
@@ -513,6 +515,14 @@ export class WebSocket对话网关 {
           data: audio,
         });
       }
+
+      this.依赖.发送到网页UI(robotId, {
+        type: 'audio_response',
+        robotId,
+        timestamp: Date.now(),
+        conversationId: 选项.最终响应会话ID,
+        data: audio,
+      }, 'audio_download');
       return;
     }
 
@@ -524,6 +534,13 @@ export class WebSocket对话网关 {
       conversationId: 选项.非流式会话ID,
       data: audio,
     });
+    this.依赖.发送到网页UI(robotId, {
+      type: 'audio_response',
+      robotId,
+      timestamp: Date.now(),
+      conversationId: 选项.非流式会话ID,
+      data: audio,
+    }, 'audio_download');
   }
 
   private sanitizeTtsText(text: string): string {

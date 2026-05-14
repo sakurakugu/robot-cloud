@@ -1,6 +1,5 @@
 import { v7 as uuidv7 } from 'uuid';
 import type { RobotRepository } from '../机器人管理/repository';
-import { 编舞机器人控制桥接 } from './bridges/robot-control-bridge';
 import { 编舞项目机器人仓库 } from './project-robot-repository';
 import { 编舞项目存储 } from './storage/project-storage';
 import type {
@@ -8,16 +7,11 @@ import type {
   AddRobotToProjectDto,
   ChoreoProject,
   ChoreoRobot,
-  ConnectionTestResult,
   ProjectRobotConfig,
   UpdateProjectRobotDto,
 } from './types';
 
 type 编舞机器人查询仓库 = Pick<RobotRepository, 'getRobot'>;
-type 编舞机器人控制桥接接口 = Pick<
-  编舞机器人控制桥接,
-  'testRobotConnection' | 'connectRobot' | 'restartMotionControl'
->;
 type 项目获取器 = (projectUuid: string) => ChoreoProject;
 
 /**
@@ -29,7 +23,6 @@ export class 编舞项目机器人服务 {
     private readonly 获取项目记录: 项目获取器,
     存储: 编舞项目存储,
     private readonly 机器人仓库: 编舞机器人查询仓库,
-    private readonly 机器人控制桥接: 编舞机器人控制桥接接口,
     private readonly 项目机器人仓库: 编舞项目机器人仓库 = new 编舞项目机器人仓库(存储),
   ) {}
 
@@ -141,41 +134,6 @@ export class 编舞项目机器人服务 {
     await this.项目机器人仓库.写入项目机器人配置(project, robots);
   }
 
-  async testRobotConnection(projectUuid: string, robotUuid: string): Promise<ConnectionTestResult> {
-    const robot = await this.获取项目机器人配置记录(projectUuid, robotUuid);
-    return this.机器人控制桥接.testRobotConnection(robot);
-  }
-
-  async connectRobot(projectUuid: string, robotUuid: string): Promise<ConnectionTestResult> {
-    const robot = await this.获取项目机器人配置记录(projectUuid, robotUuid);
-    const result = await this.机器人控制桥接.connectRobot(robot);
-
-    await this.updateProjectRobot(projectUuid, robotUuid, {
-      status: result.success ? 'online' : 'offline',
-    });
-
-    return result;
-  }
-
-  async restartMotionControl(
-    projectUuid: string,
-    robotUuid: string,
-  ): Promise<{ success: boolean; message: string }> {
-    const robot = await this.获取项目机器人配置记录(projectUuid, robotUuid);
-    return this.机器人控制桥接.restartMotionControl(robot);
-  }
-
-  private async 获取项目机器人配置记录(
-    projectUuid: string,
-    robotUuid: string,
-  ): Promise<ProjectRobotConfig> {
-    const robots = await this.getProjectRobotsConfig(projectUuid);
-    const robot = robots.find((item) => item.uuid === robotUuid);
-    if (!robot) {
-      throw new Error('机器人不存在');
-    }
-    return robot;
-  }
 }
 
 export default 编舞项目机器人服务;

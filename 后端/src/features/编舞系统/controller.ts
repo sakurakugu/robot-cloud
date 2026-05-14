@@ -468,44 +468,6 @@ export class 编舞控制器 {
     错误映射: 编舞项目机器人错误映射,
   });
 
-  // ==================== 机器人连接测试 ====================
-
-  /**
-   * 测试机器人连接
-   */
-  testRobotConnection = 处理控制器(async (req: Request) => 返回原始响应(
-    await this.service.testRobotConnection(
-      getParam(req.params.uuid),
-      getParam(req.params.robotUuid)
-    ) as unknown as Record<string, unknown>,
-  ), {
-    错误映射: 编舞项目机器人错误映射,
-  });
-
-  /**
-   * 连接机器人（Python 连接并自动配置）
-   */
-  connectRobot = 处理控制器(async (req: Request) => 返回原始响应(
-    await this.service.connectRobot(
-      getParam(req.params.uuid),
-      getParam(req.params.robotUuid)
-    ) as unknown as Record<string, unknown>,
-  ), {
-    错误映射: 编舞项目机器人错误映射,
-  });
-
-  /**
-   * 重启运控
-   */
-  restartMotionControl = 处理控制器(async (req: Request) => 返回原始响应(
-    await this.service.restartMotionControl(
-      getParam(req.params.uuid),
-      getParam(req.params.robotUuid)
-    ) as unknown as Record<string, unknown>,
-  ), {
-    错误映射: 编舞项目机器人错误映射,
-  });
-
 }
 
 export default 编舞控制器;

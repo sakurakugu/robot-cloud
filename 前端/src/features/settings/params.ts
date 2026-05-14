@@ -12,6 +12,8 @@ export type ProviderSecretConfig = {
 
 export type XunfeiFieldKey = 'appId' | 'apiKey' | 'apiSecret'
 
+export type AliyunTtsFieldKey = 'apiKey' | 'model' | 'voice' | 'instructions'
+
 export type XunfeiAsrSecretConfig = {
   appId: string
   apiKey: string
@@ -28,6 +30,20 @@ export type XunfeiAsrSecretConfig = {
   appIdLength: number
   apiKeyLength: number
   apiSecretLength: number
+}
+
+export type AliyunTtsSecretConfig = {
+  apiKey: string
+  model: string
+  voice: string
+  responseFormat: 'pcm' | 'wav' | 'mp3' | 'opus'
+  sampleRate: 8000 | 16000 | 24000 | 48000
+  instructions: string
+  optimizeInstructions: boolean
+  showApiKey: boolean
+  readonlyApiKey: boolean
+  hasApiKey: boolean
+  apiKeyLength: number
 }
 
 export function getMaskedText(len: number): string {
@@ -61,6 +77,22 @@ export function createXunfeiAsrSecretConfig(): XunfeiAsrSecretConfig {
     appIdLength: 0,
     apiKeyLength: 0,
     apiSecretLength: 0,
+  }
+}
+
+export function createAliyunTtsSecretConfig(): AliyunTtsSecretConfig {
+  return {
+    apiKey: '',
+    model: 'qwen3-tts-instruct-flash-realtime',
+    voice: 'Cherry',
+    responseFormat: 'mp3',
+    sampleRate: 24000,
+    instructions: '',
+    optimizeInstructions: false,
+    showApiKey: false,
+    readonlyApiKey: false,
+    hasApiKey: false,
+    apiKeyLength: 0,
   }
 }
 
@@ -116,6 +148,53 @@ export function applyXunfeiAsrSecretConfig(
   target.appId = target.hasAppId ? getMaskedText(target.appIdLength) : ''
   target.apiKey = target.hasApiKey ? getMaskedText(target.apiKeyLength) : ''
   target.apiSecret = target.hasApiSecret ? getMaskedText(target.apiSecretLength) : ''
+}
+
+export function applyAliyunTtsSecretConfig(
+  target: AliyunTtsSecretConfig,
+  source?: AIConfig['aliyunTts'],
+) {
+  if (!source) {
+    return
+  }
+
+  target.hasApiKey = !!source.hasApiKey
+  target.apiKeyLength = source.apiKeyLength || 0
+  target.readonlyApiKey = target.hasApiKey
+  target.showApiKey = false
+  target.apiKey = target.hasApiKey ? getMaskedText(target.apiKeyLength) : ''
+  target.model = source.model || target.model
+  target.voice = source.voice || target.voice
+  target.responseFormat = source.responseFormat || target.responseFormat
+  target.sampleRate = source.sampleRate || target.sampleRate
+  target.instructions = source.instructions || ''
+  target.optimizeInstructions = !!source.optimizeInstructions
+}
+
+export function toggleAliyunTtsFieldVisibility(target: AliyunTtsSecretConfig, field: AliyunTtsFieldKey) {
+  if (field === 'apiKey') {
+    target.showApiKey = !target.showApiKey
+  }
+}
+
+export function setAliyunTtsFieldValue(target: AliyunTtsSecretConfig, field: AliyunTtsFieldKey, value: string) {
+  if (field === 'apiKey') {
+    target.apiKey = value
+  } else if (field === 'model') {
+    target.model = value
+  } else if (field === 'voice') {
+    target.voice = value
+  } else {
+    target.instructions = value
+  }
+}
+
+export function enableAliyunTtsFieldEdit(target: AliyunTtsSecretConfig, field: AliyunTtsFieldKey) {
+  if (field === 'apiKey') {
+    target.readonlyApiKey = false
+    target.apiKey = ''
+    target.showApiKey = true
+  }
 }
 
 export function toggleXunfeiFieldVisibility(target: XunfeiAsrSecretConfig, field: XunfeiFieldKey) {
@@ -184,6 +263,34 @@ export function buildXunfeiUpdatePayload(
   if (config.apiSecret.trim().length > 0 && config.apiSecret !== getMaskedText(config.apiSecretLength)) {
     payload.apiSecret = config.apiSecret.trim()
   }
+
+  return payload
+}
+
+export function buildAliyunTtsUpdatePayload(
+  config: AliyunTtsSecretConfig,
+): NonNullable<UpdateAIConfigDTO['aliyunTts']> {
+  const payload: NonNullable<UpdateAIConfigDTO['aliyunTts']> = {}
+
+  if (config.apiKey.trim().length > 0 && config.apiKey !== getMaskedText(config.apiKeyLength)) {
+    payload.apiKey = config.apiKey.trim()
+  }
+  if (config.model.trim().length > 0) {
+    payload.model = config.model.trim()
+  }
+  if (config.voice.trim().length > 0) {
+    payload.voice = config.voice.trim()
+  }
+  if (config.responseFormat) {
+    payload.responseFormat = config.responseFormat
+  }
+  if (config.sampleRate) {
+    payload.sampleRate = config.sampleRate
+  }
+  if (config.instructions.trim().length > 0) {
+    payload.instructions = config.instructions.trim()
+  }
+  payload.optimizeInstructions = !!config.optimizeInstructions
 
   return payload
 }

@@ -1414,7 +1414,11 @@ const ensureRuntimeCommandReady = () => {
     return false
   }
   if (!isConnected.value) {
-    ElMessage.warning('未连接机器人')
+    ElMessage.warning('未连接云端控制通道')
+    return false
+  }
+  if (!isRobotOnline(selectedUuid.value)) {
+    ElMessage.warning('机器人当前离线')
     return false
   }
   return true

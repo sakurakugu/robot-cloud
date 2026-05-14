@@ -47,11 +47,21 @@ export interface 配置 {
 
   // 语音合成配置
   tts: {
-    provider: 'xunfei' | 'edge';
+    provider: 'xunfei' | 'aliyun';
     xunfei?: {
       appId: string;
       apiKey: string;
       apiSecret: string;
+    };
+    aliyun?: {
+      apiKey: string;
+      model: string;
+      baseUrl?: string;
+      voice: string;
+      responseFormat: 'pcm' | 'wav' | 'mp3' | 'opus';
+      sampleRate: 8000 | 16000 | 24000 | 48000;
+      instructions?: string;
+      optimizeInstructions?: boolean;
     };
   };
 
@@ -148,11 +158,21 @@ const 配置: 配置 = {
   },
 
   tts: {
-    provider: 'edge',
+    provider: 'aliyun',
     xunfei: {
       appId: '',
       apiKey: '',
       apiSecret: '',
+    },
+    aliyun: {
+      apiKey: '',
+      model: 'qwen3-tts-instruct-flash-realtime',
+      baseUrl: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime',
+      voice: 'Cherry',
+      responseFormat: 'mp3',
+      sampleRate: 24000,
+      instructions: '',
+      optimizeInstructions: false,
     },
   },
 

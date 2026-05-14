@@ -239,28 +239,10 @@
             style="width: 100%"
           >
             <el-option
-              label="女声-温柔"
-              value="female-soft"
-            />
-            <el-option
-              label="女声-活泼"
-              value="female-bright"
-            />
-            <el-option
-              label="男声-低沉"
-              value="male-deep"
-            />
-            <el-option
-              label="男声-洪亮"
-              value="male-bright"
-            />
-            <el-option
-              label="童声"
-              value="child"
-            />
-            <el-option
-              label="电子音"
-              value="robotic"
+              v-for="voice in ttsVoices"
+              :key="voice.value"
+              :label="voice.label"
+              :value="voice.value"
             />
           </el-select>
         </el-form-item>
@@ -378,6 +360,14 @@ const asrModelsMap: Record<string, Array<{ value: string; label: string }>> = {
   ]
 }
 
+const ttsVoices = [
+  { label: 'Cherry', value: 'Cherry' },
+  { label: 'Mia', value: 'Mia' },
+  { label: 'Neil', value: 'Neil' },
+  { label: 'Serena', value: 'Serena' },
+  { label: 'Ethan', value: 'Ethan' }
+]
+
 function createDefaultRoleForm(): RoleFormData {
   return {
     uuid: '',
@@ -467,7 +457,7 @@ const showCreateDialog = () => {
   roleForm.value = {
     ...createDefaultRoleForm(),
     llm_provider: providers.value[0]?.value || '',
-    voice: 'female-soft',
+    voice: 'Cherry',
   }
   dialogVisible.value = true
 }

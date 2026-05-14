@@ -90,4 +90,22 @@ describe('WebSocket连接注册表', () => {
     expect(机器人ws.send).toHaveBeenCalled();
     expect(uiWs.send).toHaveBeenCalled();
   });
+
+  it('发送到网页UI时应跳过手机会话', () => {
+    const 注册表 = new WebSocket连接注册表();
+    const 网页ws = new 假WebSocket();
+    const 手机ws = new 假WebSocket();
+
+    注册表.注册UI连接('robot-1', 'audio_download', 网页ws, {});
+    注册表.注册UI连接('robot-1', 'audio_download', 手机ws, {
+      phoneDeviceId: 'phone-1',
+      phoneSessionId: 'session-1',
+    });
+
+    const sent = 注册表.发送到网页UI('robot-1', 创建消息(), 'audio_download');
+
+    expect(sent).toBe(true);
+    expect(网页ws.send).toHaveBeenCalled();
+    expect(手机ws.send).not.toHaveBeenCalled();
+  });
 });

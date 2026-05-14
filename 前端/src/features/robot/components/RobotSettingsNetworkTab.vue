@@ -42,7 +42,7 @@
           :loading="testingNetwork"
           @click="testConnection"
         >
-          测试连接
+          测试端口
         </el-button>
         <el-button
           type="success"
