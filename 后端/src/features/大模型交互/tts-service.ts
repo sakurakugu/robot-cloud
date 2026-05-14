@@ -61,7 +61,7 @@ class 语音合成服务 {
 
     const model = cfg.model || 'qwen3-tts-instruct-flash-realtime';
     const wsUrl = this.构建实时TTS地址(cfg.baseUrl, model);
-    const format = cfg.responseFormat || 'pcm';
+    const format = onChunk ? 'pcm' : (cfg.responseFormat || 'pcm');
     const sampleRate = cfg.sampleRate || 24000;
 
     return new Promise<AudioResponse>((resolve, reject) => {

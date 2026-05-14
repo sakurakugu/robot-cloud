@@ -477,7 +477,9 @@ export class WebSocket对话网关 {
         conversationId: 选项.流式会话ID,
         data: {
           sessionId: 选项.流式会话ID,
-          format: 配置.tts.aliyun?.responseFormat || 'mp3',
+          format: 'pcm',
+          sampleRate: 配置.tts.aliyun?.sampleRate || 24000,
+          channels: 1,
         },
       });
 
