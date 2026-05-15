@@ -10,49 +10,15 @@ export const choreoRoutes: RouteRecordRaw[] = [
     name: 'ChoreoList',
     component: () => import('./views/ChoreoList.vue'),
     meta: {
-      title: '编舞系统',
+      title: '编舞项目中心',
     },
   },
   {
     path: '/choreo/:uuid',
-    name: 'ChoreoEditor',
-    component: () => import('./views/ChoreoEditor.vue'),
+    name: 'ChoreoDetail',
+    component: () => import('./views/ChoreoDetail.vue'),
     meta: {
-      title: '编舞编辑器',
-    },
-    children: [
-      {
-        path: 'actions',
-        name: 'ChoreoActions',
-        component: () => import('./views/ActionList.vue'),
-        meta: {
-          title: '动作列表',
-        },
-      },
-    ],
-  },
-  {
-    path: '/choreo/:uuid/help',
-    name: 'ChoreoHelp',
-    component: () => import('./views/ChoreoHelp.vue'),
-    meta: {
-      title: '帮助',
-    },
-  },
-  {
-    path: '/choreo/:uuid/about',
-    name: 'ChoreoAbout',
-    component: () => import('./views/ChoreoAbout.vue'),
-    meta: {
-      title: '关于',
-    },
-  },
-  {
-    path: '/choreo/:uuid/settings',
-    name: 'ChoreoSettings',
-    component: () => import('./views/ChoreoSettings.vue'),
-    meta: {
-      title: '编舞设置',
+      title: '编舞项目详情',
     },
   },
 ]

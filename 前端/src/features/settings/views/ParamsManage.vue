@@ -105,10 +105,22 @@
                   v-model="aliyunTtsResponseFormat"
                   style="width: 100%"
                 >
-                  <el-option label="MP3" value="mp3" />
-                  <el-option label="WAV" value="wav" />
-                  <el-option label="PCM" value="pcm" />
-                  <el-option label="OPUS" value="opus" />
+                  <el-option
+                    label="MP3"
+                    value="mp3"
+                  />
+                  <el-option
+                    label="WAV"
+                    value="wav"
+                  />
+                  <el-option
+                    label="PCM"
+                    value="pcm"
+                  />
+                  <el-option
+                    label="OPUS"
+                    value="opus"
+                  />
                 </el-select>
               </el-form-item>
               <el-form-item label="采样率">
@@ -116,10 +128,22 @@
                   v-model="aliyunTtsSampleRate"
                   style="width: 100%"
                 >
-                  <el-option label="8000" :value="8000" />
-                  <el-option label="16000" :value="16000" />
-                  <el-option label="24000" :value="24000" />
-                  <el-option label="48000" :value="48000" />
+                  <el-option
+                    label="8000"
+                    :value="8000"
+                  />
+                  <el-option
+                    label="16000"
+                    :value="16000"
+                  />
+                  <el-option
+                    label="24000"
+                    :value="24000"
+                  />
+                  <el-option
+                    label="48000"
+                    :value="48000"
+                  />
                 </el-select>
               </el-form-item>
               <el-form-item label="提示词">

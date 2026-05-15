@@ -29,7 +29,9 @@
       <el-container>
         <el-header>
           <div class="header-content">
-            <h1>机器狗编舞系统</h1>
+            <div class="header-copy">
+              <h1>编舞项目中心</h1>
+            </div>
             <div class="header-actions">
               <el-radio-group
                 v-model="viewMode"
@@ -130,7 +132,11 @@
                       <el-dropdown-menu>
                         <el-dropdown-item @click="editProject(project)">
                           <el-icon><Edit /></el-icon>
-                          编辑
+                          编辑信息
+                        </el-dropdown-item>
+                        <el-dropdown-item @click="openProject(project.uuid)">
+                          <el-icon><VideoPlay /></el-icon>
+                          查看详情
                         </el-dropdown-item>
                         <el-dropdown-item @click="exportProject(project)">
                           <el-icon><Download /></el-icon>
@@ -192,7 +198,13 @@
                       size="small"
                       @click="editProject(project)"
                     >
-                      编辑
+                      编辑信息
+                    </el-button>
+                    <el-button
+                      size="small"
+                      @click="openProject(project.uuid)"
+                    >
+                      查看详情
                     </el-button>
                     <el-button
                       type="danger"
@@ -532,6 +544,25 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 20px;
+}
+
+.header-copy {
+  min-width: 0;
+}
+
+.header-copy h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin: 0 0 6px;
+}
+
+.header-copy p {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .header-actions {
@@ -564,12 +595,6 @@ onMounted(() => {
 
 .header-actions .el-button .el-icon {
   margin-right: 8px;
-}
-
-.header-content h1 {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 
 .el-main {
@@ -696,6 +721,18 @@ onMounted(() => {
 .meta-value {
   font-size: 13px;
   color: var(--el-text-color-regular);
+}
+
+@media (max-width: 920px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 }
 
 .list-item-actions {

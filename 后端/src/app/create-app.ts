@@ -97,7 +97,10 @@ export async function createApp(context: 应用上下文): Promise<express.Appli
     updateUI: requireRole('admin', 'super_admin'),
   }));
   受保护路由器.use('/roles', createRoleRoutes(context.控制器.角色控制器));
-  受保护路由器.use('/choreo', createChoreoRoutes(context.控制器.编舞控制器));
+  受保护路由器.use('/choreo', createChoreoRoutes(context.控制器.编舞控制器, {
+    read: requireAuth,
+    manage: requireRole('admin', 'super_admin'),
+  }));
   受保护路由器.use('/knowledge', createKnowledgeRoutes(context.控制器.知识库控制器));
   受保护路由器.use('/feedback', createFeedbackRoutes(context.控制器.反馈控制器, {
     manage: requireRole('admin', 'super_admin'),

@@ -3,6 +3,3 @@
  */
 
 export { default as RobotPreview } from './RobotPreview.vue'
-
-// 时间轴组件
-export * from './timeline'
